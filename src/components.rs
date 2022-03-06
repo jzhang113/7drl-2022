@@ -117,7 +117,16 @@ pub struct Item;
 #[derive(Component)]
 pub struct Openable;
 
+pub enum Direction {
+    N,
+    E,
+    S,
+    W,
+}
+
 #[derive(Component)]
 pub struct MultiTile {
     pub part_list: Vec<crate::MonsterPart>,
+    pub facing: Direction,
+    pub bounds: rltk::Rect,
 }

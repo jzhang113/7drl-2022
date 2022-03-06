@@ -177,6 +177,23 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
     part_hash.insert(rltk::Point::new(0, 1), rltk::to_cp437('!'));
     part_hash.insert(rltk::Point::new(0, -1), rltk::to_cp437('!'));
 
+    let mut part_hash_2 = std::collections::HashMap::new();
+    part_hash_2.insert(rltk::Point::new(1, 0), rltk::to_cp437('!'));
+    part_hash_2.insert(rltk::Point::new(-1, 0), rltk::to_cp437('!'));
+
+    let part_list = vec![
+        MonsterPart {
+            symbol_map: part_hash,
+            health: 1,
+            max_health: 1,
+        },
+        MonsterPart {
+            symbol_map: part_hash_2,
+            health: 1,
+            max_health: 1,
+        },
+    ];
+
     build_enemy_base(ecs)
         .with(Position {
             x: point.x,
@@ -205,11 +222,9 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
             moves: vec![(AttackType::Haymaker, 0.25), (AttackType::Punch, 0.75)],
         })
         .with(MultiTile {
-            part_list: vec![MonsterPart {
-                symbol_map: part_hash,
-                health: 1,
-                max_health: 1,
-            }],
+            bounds: all_bounds(&part_list),
+            part_list: part_list,
+            facing: crate::Direction::N,
         })
         .build()
 }
