@@ -17,12 +17,13 @@ pub struct Map {
     pub height: i32,
     pub depth: i32,
     pub color_map: Vec<rltk::RGB>,
-    pub item_map: HashMap<usize, specs::Entity>,
-    pub creature_map: HashMap<usize, specs::Entity>,
+    pub item_map: HashMap<usize, Entity>,
+    pub creature_map: HashMap<usize, Entity>,
     pub known_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
     pub level_exit: usize,
+    pub search_entity: Option<Entity>,
 }
 
 impl BaseMap for Map {
@@ -84,7 +85,35 @@ impl Map {
             return false;
         }
 
-        !self.blocked_tiles[self.get_index(x, y)]
+        let index = self.get_index(x, y);
+
+        // non-blocked tiles are always valid
+        if !self.blocked_tiles[index] {
+            return true;
+        }
+
+        // blocked tiles can be valid if they belong to the search_entity (creatures are not blocked by themselves)
+        match self.search_entity {
+            Some(search_entity) => match self.creature_map.get(&index) {
+                Some(map_entity) => *map_entity == search_entity,
+                None => false,
+            },
+            None => false,
+        }
+    }
+
+    pub fn is_exit_valid_for(&mut self, x: i32, y: i32, entity: Entity) -> bool {
+        self.search_entity = Some(entity);
+        self.is_exit_valid(x, y)
+    }
+
+    pub fn get_available_exits_for(
+        &mut self,
+        idx: usize,
+        entity: Entity,
+    ) -> rltk::SmallVec<[(usize, f32); 10]> {
+        self.search_entity = Some(entity);
+        self.get_available_exits(idx)
     }
 
     fn build_room(&mut self, room: Rect) {
@@ -152,7 +181,33 @@ impl Map {
         self.item_map.remove(&index)
     }
 
-    pub fn track_creature(&mut self, data: Entity, point: Point) -> bool {
+    fn update_multi_component(
+        &mut self,
+        entity: Entity,
+        multi_component: &crate::MultiTile,
+        point: Point,
+        is_blocked: bool,
+    ) {
+        for part in &multi_component.part_list {
+            for part_pos in part.symbol_map.keys() {
+                let part_pos_index = self.point2d_to_index(*part_pos + point);
+                self.blocked_tiles[part_pos_index] = is_blocked;
+
+                if is_blocked {
+                    self.creature_map.insert(part_pos_index, entity);
+                } else {
+                    self.creature_map.remove(&part_pos_index);
+                }
+            }
+        }
+    }
+
+    pub fn track_creature(
+        &mut self,
+        data: Entity,
+        point: Point,
+        multi_component: Option<&crate::MultiTile>,
+    ) -> bool {
         let index = self.point2d_to_index(point);
 
         if self.creature_map.get(&index).is_some() {
@@ -160,35 +215,61 @@ impl Map {
         } else {
             self.blocked_tiles[index] = true;
             self.creature_map.insert(index, data);
+
+            if let Some(multi_component) = multi_component {
+                self.update_multi_component(data, &multi_component, point, true);
+            }
+
             true
         }
     }
 
-    pub fn untrack_creature(&mut self, point: Point) -> Option<Entity> {
+    pub fn untrack_creature(
+        &mut self,
+        point: Point,
+        multi_component: Option<&crate::MultiTile>,
+    ) -> Option<Entity> {
         let index = self.point2d_to_index(point);
         self.blocked_tiles[index] = false;
-        self.creature_map.remove(&index)
+        let entity = self.creature_map.remove(&index);
+
+        if let Some(entity) = entity {
+            if let Some(multi_component) = multi_component {
+                self.update_multi_component(entity, &multi_component, point, false);
+            }
+        }
+
+        entity
     }
 
     // move a creature on the map, updating creature_map and blocked_tiles as needed
     // this does not update the position component
     // returns false if the move could not be completed
-    pub fn move_creature(&mut self, creature: Entity, prev: Point, next: Point) -> bool {
+    pub fn move_creature(
+        &mut self,
+        creature: Entity,
+        prev: Point,
+        next: Point,
+        multi_component: Option<&crate::MultiTile>,
+    ) -> bool {
         let prev_index = self.point2d_to_index(prev);
         let next_index = self.point2d_to_index(next);
 
-        // if the destination is blocked, quit moving
-        if self.creature_map.get(&next_index).is_some() {
+        // if the destination is blocked by something other than us, quit moving
+        if !self.is_exit_valid_for(next.x, next.y, creature) {
             return false;
         }
 
-        self.creature_map.insert(next_index, creature);
         self.creature_map.remove(&prev_index);
+        self.blocked_tiles[prev_index] = false;
+        if let Some(multi_component) = multi_component {
+            self.update_multi_component(creature, multi_component, prev, false);
+        }
 
-        // update blocking if needed
-        if self.blocked_tiles[prev_index] {
-            self.blocked_tiles[next_index] = true;
-            self.blocked_tiles[prev_index] = false;
+        self.creature_map.insert(next_index, creature);
+        self.blocked_tiles[next_index] = true;
+        if let Some(multi_component) = multi_component {
+            self.update_multi_component(creature, multi_component, next, true);
         }
 
         true
@@ -215,13 +296,14 @@ pub fn build_rogue_map(
         visible_tiles: vec![false; dim],
         blocked_tiles: vec![false; dim],
         level_exit: 0,
+        search_entity: None,
     };
 
-    const MAX_ROOMS: i32 = 30;
-    const MIN_ROOM_WIDTH: i32 = 6;
-    const MAX_ROOM_WIDTH: i32 = 12;
-    const MIN_ROOM_HEIGHT: i32 = 6;
-    const MAX_ROOM_HEIGHT: i32 = 12;
+    const MAX_ROOMS: i32 = 1;
+    const MIN_ROOM_WIDTH: i32 = 20;
+    const MAX_ROOM_WIDTH: i32 = 30;
+    const MIN_ROOM_HEIGHT: i32 = 20;
+    const MAX_ROOM_HEIGHT: i32 = 30;
 
     for _ in 0..MAX_ROOMS {
         let w = rng.range(MIN_ROOM_WIDTH, MAX_ROOM_WIDTH);
@@ -276,7 +358,7 @@ pub fn build_level(ecs: &mut specs::World, width: i32, height: i32, depth: i32) 
     let cloned_rooms = map.rooms.clone();
     let mut spawner = spawner::Spawner::new(ecs, &mut map, width);
 
-    for room in cloned_rooms.iter().skip(1) {
+    for room in cloned_rooms.iter() {
         let quality = depth;
         let mut spawn_ary = Vec::new();
         spawn_ary.push(

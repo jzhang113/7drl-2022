@@ -1,4 +1,3 @@
-use super::{Map, MoveIntent, Position, Viewshed};
 use specs::prelude::*;
 
 pub struct MovementSystem;
@@ -6,30 +5,29 @@ pub struct MovementSystem;
 impl<'a> System<'a> for MovementSystem {
     type SystemData = (
         Entities<'a>,
-        WriteExpect<'a, Map>,
-        WriteStorage<'a, Position>,
-        WriteStorage<'a, MoveIntent>,
-        WriteStorage<'a, Viewshed>,
+        WriteExpect<'a, crate::Map>,
+        ReadStorage<'a, crate::MultiTile>,
+        WriteStorage<'a, crate::Position>,
+        WriteStorage<'a, crate::MoveIntent>,
+        WriteStorage<'a, crate::Viewshed>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut map, mut positions, mut movements, mut viewsheds) = data;
+        let (entities, mut map, multis, mut positions, mut movements, mut viewsheds) = data;
 
-        for (ent, pos, movement, viewshed) in (
+        for (ent, pos, movement, multi, viewshed) in (
             &entities,
             &mut positions,
             &movements,
+            (&multis).maybe(),
             (&mut viewsheds).maybe(),
         )
             .join()
         {
             let new_pos = movement.loc;
-            let new_index = map.get_index(new_pos.x, new_pos.y);
 
-            // check if the tile is blocked, since it may have changed
-            if !map.blocked_tiles[new_index] {
-                map.move_creature(ent, rltk::Point::new(pos.x, pos.y), new_pos);
-
+            // update the position if we successfully moved to new_pos
+            if map.move_creature(ent, pos.as_point(), new_pos, multi) {
                 pos.x = new_pos.x;
                 pos.y = new_pos.y;
 

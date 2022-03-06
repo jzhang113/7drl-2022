@@ -1,4 +1,3 @@
-use super::{Health, Map, Position, RunState};
 use specs::prelude::*;
 
 pub struct DeathSystem;
@@ -7,23 +6,26 @@ impl<'a> System<'a> for DeathSystem {
     type SystemData = (
         Entities<'a>,
         ReadExpect<'a, Entity>,
-        WriteExpect<'a, Map>,
-        WriteExpect<'a, RunState>,
-        ReadStorage<'a, Position>,
-        ReadStorage<'a, Health>,
+        WriteExpect<'a, crate::Map>,
+        WriteExpect<'a, crate::RunState>,
+        ReadStorage<'a, crate::Position>,
+        ReadStorage<'a, crate::Health>,
+        ReadStorage<'a, crate::MultiTile>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, player, mut map, mut run_state, positions, healths) = data;
+        let (entities, player, mut map, mut run_state, positions, healths, multitiles) = data;
         let mut dead = Vec::new();
 
-        for (ent, pos, health) in (&entities, &positions, &healths).join() {
+        for (ent, pos, health, multis) in
+            (&entities, &positions, &healths, (&multitiles).maybe()).join()
+        {
             if health.current <= 0 {
                 if ent != *player {
                     dead.push(ent);
-                    map.untrack_creature(rltk::Point::new(pos.x, pos.y));
+                    map.untrack_creature(pos.as_point(), multis);
                 } else {
-                    *run_state = RunState::Dead;
+                    *run_state = crate::RunState::Dead;
                 }
             }
         }

@@ -104,7 +104,7 @@ impl State {
         let mut map = map::build_level(&mut self.ecs, gui::MAP_W, gui::MAP_H, 1);
         let player_pos = map.rooms[0].center();
         let player = spawner::build_player(&mut self.ecs, player_pos);
-        map.track_creature(player, player_pos);
+        map.track_creature(player, player_pos, None);
 
         self.ecs.insert(map);
         self.ecs.insert(player);
@@ -223,6 +223,8 @@ impl GameState for State {
         gui::draw_map(&self.ecs, ctx);
         gui::draw_renderables(&self.ecs, ctx);
         gui::draw_sidebar(&self.ecs, ctx);
+
+        gui::draw_blocked_tiles(&self.ecs, ctx);
 
         let mut next_status;
         let player_point;

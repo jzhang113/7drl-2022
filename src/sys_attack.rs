@@ -28,8 +28,6 @@ impl<'a> System<'a> for AttackSystem {
                         //
                     }
                     crate::AttackTrait::Damage { amount } => {
-                        println!("attack was executed");
-
                         let targets =
                             crate::move_type::each_attack_target(&intent.main, intent.loc);
 

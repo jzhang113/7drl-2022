@@ -16,6 +16,51 @@ impl<'a> Spawner<'a> {
         }
     }
 
+    fn get_spawn_points(
+        &mut self,
+        room: &Rect,
+        min: i32,
+        max: i32,
+        chance: Vec<f32>,
+    ) -> Vec<(usize, i32, i32)> {
+        let mut spawn_points = Vec::new();
+        let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
+        let spawn_count = rng.range(min, max);
+
+        for _ in 0..spawn_count {
+            let dx = rng.range(1, room.width());
+            let dy = rng.range(1, room.height());
+            let xpos = room.x1 + dx;
+            let ypos = room.y1 + dy;
+            let index = ((ypos * self.map_width) + xpos) as usize;
+
+            // don't spawn over something else
+            if !self.map.blocked_tiles[index] && index != self.map.level_exit {
+                let roll = rng.rand::<f32>();
+                let mut cumul_prob = 0.0;
+                let mut builder_index = 0;
+
+                for index in 0..chance.len() {
+                    cumul_prob += chance[index];
+
+                    if roll < cumul_prob {
+                        builder_index = index;
+                        break;
+                    }
+                }
+
+                spawn_points.push((builder_index, xpos, ypos));
+            }
+        }
+
+        spawn_points
+    }
+
+    fn track_entity(&mut self, entity: Entity, point: Point) {
+        let multis = self.ecs.read_storage::<MultiTile>();
+        self.map.track_creature(entity, point, multis.get(entity));
+    }
+
     pub fn build(
         &mut self,
         room: &Rect,
@@ -24,42 +69,10 @@ impl<'a> Spawner<'a> {
         chance: Vec<f32>,
         builder: Vec<impl Fn(&mut World, Point) -> Entity>,
     ) {
-        let mut spawn_points = Vec::new();
-        {
-            let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
-            let spawn_count = rng.range(min, max);
-
-            for _ in 0..spawn_count {
-                let dx = rng.range(1, room.width());
-                let dy = rng.range(1, room.height());
-                let xpos = room.x1 + dx;
-                let ypos = room.y1 + dy;
-                let index = ((ypos * self.map_width) + xpos) as usize;
-
-                // don't spawn over something else
-                if !self.map.blocked_tiles[index] && index != self.map.level_exit {
-                    let roll = rng.rand::<f32>();
-                    let mut cumul_prob = 0.0;
-                    let mut builder_index = 0;
-
-                    for index in 0..chance.len() {
-                        cumul_prob += chance[index];
-
-                        if roll < cumul_prob {
-                            builder_index = index;
-                            break;
-                        }
-                    }
-
-                    spawn_points.push((builder_index, xpos, ypos));
-                }
-            }
-        }
-
-        for (builder_index, xpos, ypos) in spawn_points {
+        for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
             let point = Point::new(xpos, ypos);
-            let enemy = builder[builder_index](self.ecs, point);
-            self.map.track_creature(enemy, point);
+            let entity = builder[builder_index](self.ecs, point);
+            self.track_entity(entity, point);
         }
     }
 
@@ -72,42 +85,10 @@ impl<'a> Spawner<'a> {
         chance: Vec<f32>,
         builder: Vec<impl Fn(&mut World, Point, i32) -> Entity>,
     ) {
-        let mut spawn_points = Vec::new();
-        {
-            let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
-            let spawn_count = rng.range(min, max);
-
-            for _ in 0..spawn_count {
-                let dx = rng.range(1, room.width());
-                let dy = rng.range(1, room.height());
-                let xpos = room.x1 + dx;
-                let ypos = room.y1 + dy;
-                let index = ((ypos * self.map_width) + xpos) as usize;
-
-                // don't spawn over something else
-                if !self.map.blocked_tiles[index] && index != self.map.level_exit {
-                    let roll = rng.rand::<f32>();
-                    let mut cumul_prob = 0.0;
-                    let mut builder_index = 0;
-
-                    for index in 0..chance.len() {
-                        cumul_prob += chance[index];
-
-                        if roll < cumul_prob {
-                            builder_index = index;
-                            break;
-                        }
-                    }
-
-                    spawn_points.push((builder_index, xpos, ypos));
-                }
-            }
-        }
-
-        for (builder_index, xpos, ypos) in spawn_points {
+        for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
             let point = Point::new(xpos, ypos);
-            let enemy = builder[builder_index](self.ecs, point, quality);
-            self.map.track_creature(enemy, point);
+            let entity = builder[builder_index](self.ecs, point, quality);
+            self.track_entity(entity, point);
         }
     }
 }

@@ -124,6 +124,27 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
     }
 }
 
+pub fn draw_blocked_tiles(ecs: &World, ctx: &mut Rltk) {
+    let map = ecs.fetch::<Map>();
+
+    ctx.set_active_console(0);
+
+    for (index, is_blocked) in map.blocked_tiles.iter().enumerate() {
+        if *is_blocked {
+            let point = map.index_to_point2d(index);
+            ctx.set(
+                MAP_X + point.x,
+                MAP_Y + point.y,
+                RGB::named(rltk::DARKSLATEGRAY),
+                RGB::named(rltk::BLACK),
+                rltk::to_cp437('█'),
+            );
+        }
+    }
+
+    ctx.set_active_console(1);
+}
+
 fn highlight_bg(ctx: &mut Rltk, pos: &rltk::Point, color: RGB) {
     ctx.set_active_console(0);
     ctx.set_bg(MAP_X + pos.x, MAP_Y + pos.y, color);
@@ -476,6 +497,18 @@ fn _draw_tooltips(ecs: &World, ctx: &mut Rltk) {
     for (_rend, view, pos) in (&renderables, &viewables, &positions).join() {
         if pos.as_point() == adjusted_point {
             tooltip.push(view.name.to_string());
+        }
+    }
+
+    if map.in_bounds(adjusted_point) {
+        let ent = map
+            .creature_map
+            .get(&map.get_index(adjusted_point.x, adjusted_point.y));
+
+        if let Some(ent) = ent {
+            let vv = viewables.get(*ent).unwrap();
+
+            tooltip.push(vv.name.to_string());
         }
     }
 
