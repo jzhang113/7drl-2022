@@ -6,6 +6,7 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     let mut positions = ecs.write_storage::<Position>();
     let players = ecs.read_storage::<Player>();
     let mut movements = ecs.write_storage::<MoveIntent>();
+    let mut attacks = ecs.write_storage::<AttackIntent>();
     let mut healths = ecs.write_storage::<Health>();
     let openables = ecs.read_storage::<Openable>();
     let map = ecs.fetch::<Map>();
@@ -33,15 +34,22 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
             if let Some(dest_ent) = map.creature_map.get(&dest_index) {
                 if let Some(_) = openables.get(*dest_ent) {
                     if let Some(health) = healths.get_mut(*dest_ent) {
+                        // will be cleaned up by sys_death
                         health.current = 0;
                     }
 
                     return RunState::Running;
                 } else {
-                    // TODO: implement push
-                    let mut log = ecs.fetch_mut::<crate::gamelog::GameLog>();
-                    log.entries
-                        .push(format!("You can't make it through this way"));
+                    let attack = AttackIntent {
+                        loc: Point::new(new_x, new_y),
+                        main: AttackType::Punch,
+                        modifier: None,
+                    };
+                    attacks
+                        .insert(*player, attack)
+                        .expect("Failed to insert new attack from player");
+
+                    return RunState::Running;
                 }
             }
 
