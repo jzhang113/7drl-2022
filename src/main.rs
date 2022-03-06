@@ -11,6 +11,7 @@ mod components;
 mod gamelog;
 mod gui;
 mod map;
+mod monster_part;
 mod move_type;
 mod player;
 mod range_type;
@@ -28,6 +29,7 @@ mod sys_visibility;
 pub use colors::*;
 pub use components::*;
 pub use map::{Map, TileType};
+pub use monster_part::*;
 pub use move_type::*;
 pub use range_type::*;
 pub use sys_ai::Behavior;
@@ -86,6 +88,8 @@ impl State {
         self.ecs.register::<Heal>();
         self.ecs.register::<Item>();
         self.ecs.register::<Openable>();
+
+        self.ecs.register::<MultiTile>();
     }
 
     fn new_game(&mut self) {

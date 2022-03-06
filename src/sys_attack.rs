@@ -29,8 +29,6 @@ impl<'a> System<'a> for AttackSystem {
                     }
                     crate::AttackTrait::Damage { amount } => {
                         println!("attack was executed");
-                        dbg!(&intent.main);
-                        dbg!(ent);
 
                         let targets =
                             crate::move_type::each_attack_target(&intent.main, intent.loc);
@@ -45,8 +43,6 @@ impl<'a> System<'a> for AttackSystem {
 
                             let point_index = map.point2d_to_index(point);
                             if let Some(aff_ent) = map.creature_map.get(&point_index) {
-                                dbg!("{} is hit!", aff_ent);
-
                                 if let Some(mut aff_health) = healths.get_mut(*aff_ent) {
                                     aff_health.current -= amount;
                                 }

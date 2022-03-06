@@ -73,25 +73,28 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
     let positions = ecs.read_storage::<Position>();
     let renderables = ecs.read_storage::<Renderable>();
     let particles = ecs.read_storage::<ParticleLifetime>();
+    let multitiles = ecs.read_storage::<MultiTile>();
     let map = ecs.fetch::<Map>();
 
-    for (pos, render, particle) in (&positions, &renderables, (&particles).maybe()).join() {
-        if let Some(lifetime) = particle {
-            let mut fg = render.fg;
-            let mut bg = render.bg;
+    for (pos, render, particle) in (&positions, &renderables, &particles).join() {
+        let mut fg = render.fg;
+        let mut bg = render.bg;
 
-            if lifetime.should_fade {
-                let fade_percent = ezing::expo_inout(1.0 - lifetime.remaining / lifetime.base);
-                let base_color = bg_color();
+        if particle.should_fade {
+            let fade_percent = ezing::expo_inout(1.0 - particle.remaining / particle.base);
+            let base_color = bg_color();
 
-                fg = fg.lerp(base_color, fade_percent);
-                bg = bg.lerp(base_color, fade_percent);
-            }
+            fg = fg.lerp(base_color, fade_percent);
+            bg = bg.lerp(base_color, fade_percent);
+        }
 
-            ctx.set_active_console(0);
-            ctx.set(MAP_X + pos.x, MAP_Y + pos.y, fg, bg, render.symbol);
-            ctx.set_active_console(1);
-        } else if map.visible_tiles[map.get_index(pos.x, pos.y)] || SHOW_REND {
+        ctx.set_active_console(0);
+        ctx.set(MAP_X + pos.x, MAP_Y + pos.y, fg, bg, render.symbol);
+        ctx.set_active_console(1);
+    }
+
+    for (pos, render, mtt) in (&positions, &renderables, (&multitiles).maybe()).join() {
+        if map.visible_tiles[map.get_index(pos.x, pos.y)] || SHOW_REND {
             ctx.set(
                 MAP_X + pos.x,
                 MAP_Y + pos.y,
@@ -99,6 +102,24 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
                 render.bg,
                 render.symbol,
             );
+        }
+
+        if let Some(mtt) = mtt {
+            for part_list in &mtt.part_list {
+                for (mtt_pos, mtt_symbol) in &part_list.symbol_map {
+                    if map.visible_tiles[map.get_index(pos.x + mtt_pos.x, pos.y + mtt_pos.y)]
+                        || SHOW_REND
+                    {
+                        ctx.set(
+                            MAP_X + pos.x + mtt_pos.x,
+                            MAP_Y + pos.y + mtt_pos.y,
+                            render.fg,
+                            render.bg,
+                            *mtt_symbol,
+                        );
+                    }
+                }
+            }
         }
     }
 }

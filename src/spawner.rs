@@ -152,8 +152,32 @@ pub fn build_player(ecs: &mut World, point: Point) -> Entity {
 // #endregion
 
 // #region Enemies
-pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
+pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
     ecs.create_entity()
+        .with(ViewableIndex { list_index: None })
+        .with(Schedulable {
+            current: 0,
+            base: 24,
+            delta: 4,
+        })
+        .with(Viewshed {
+            visible: Vec::new(),
+            dirty: true,
+            range: 8,
+        })
+        .with(BlocksTile)
+        .with(AiState {
+            status: Behavior::Wander,
+            tracking: None,
+        })
+}
+
+pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
+    let mut part_hash = std::collections::HashMap::new();
+    part_hash.insert(rltk::Point::new(0, 1), rltk::to_cp437('!'));
+    part_hash.insert(rltk::Point::new(0, -1), rltk::to_cp437('!'));
+
+    build_enemy_base(ecs)
         .with(Position {
             x: point.x,
             y: point.y,
@@ -173,31 +197,25 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
             ],
             seen: false,
         })
-        .with(ViewableIndex { list_index: None })
-        .with(Schedulable {
-            current: 0,
-            base: 24,
-            delta: 4,
+        .with(Health {
+            current: 10,
+            max: 10,
         })
-        .with(Viewshed {
-            visible: Vec::new(),
-            dirty: true,
-            range: 8,
-        })
-        .with(BlocksTile)
-        .with(Health { current: 5, max: 5 })
         .with(Moveset {
             moves: vec![(AttackType::Haymaker, 0.25), (AttackType::Punch, 0.75)],
         })
-        .with(AiState {
-            status: Behavior::Wander,
-            tracking: None,
+        .with(MultiTile {
+            part_list: vec![MonsterPart {
+                symbol_map: part_hash,
+                health: 1,
+                max_health: 1,
+            }],
         })
         .build()
 }
 
 pub fn build_archer(ecs: &mut World, point: Point) -> Entity {
-    ecs.create_entity()
+    build_enemy_base(ecs)
         .with(Position {
             x: point.x,
             y: point.y,
@@ -212,25 +230,9 @@ pub fn build_archer(ecs: &mut World, point: Point) -> Entity {
             description: vec!["A grunt with a bow".to_string()],
             seen: false,
         })
-        .with(ViewableIndex { list_index: None })
-        .with(Schedulable {
-            current: 0,
-            base: 24,
-            delta: 4,
-        })
-        .with(Viewshed {
-            visible: Vec::new(),
-            dirty: true,
-            range: 8,
-        })
-        .with(BlocksTile)
         .with(Health { current: 2, max: 2 })
         .with(Moveset {
             moves: vec![(AttackType::Punch, 0.25), (AttackType::Ranged, 0.75)],
-        })
-        .with(AiState {
-            status: Behavior::Wander,
-            tracking: None,
         })
         .build()
 }

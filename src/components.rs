@@ -116,3 +116,8 @@ pub struct Item;
 
 #[derive(Component)]
 pub struct Openable;
+
+#[derive(Component)]
+pub struct MultiTile {
+    pub part_list: Vec<crate::MonsterPart>,
+}
