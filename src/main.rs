@@ -6,13 +6,13 @@ rltk::embedded_resource!(ICONS, "../resources/custom_icons.png");
 use rltk::{GameState, Rltk, RGB};
 use specs::prelude::*;
 
+mod attack_type;
 mod colors;
 mod components;
 mod gamelog;
 mod gui;
 mod map;
 mod monster_part;
-mod move_type;
 mod player;
 mod range_type;
 mod spawner;
@@ -26,11 +26,11 @@ mod sys_pickup;
 mod sys_turn;
 mod sys_visibility;
 
+pub use attack_type::*;
 pub use colors::*;
 pub use components::*;
 pub use map::{Map, TileType};
 pub use monster_part::*;
-pub use move_type::*;
 pub use range_type::*;
 pub use sys_ai::Behavior;
 pub use sys_particle::{ParticleBuilder, ParticleRequest};
@@ -225,6 +225,7 @@ impl GameState for State {
         gui::draw_sidebar(&self.ecs, ctx);
 
         gui::draw_blocked_tiles(&self.ecs, ctx);
+        gui::draw_attacks_in_progress(&self.ecs, ctx);
 
         let mut next_status;
         let player_point;
@@ -256,7 +257,7 @@ impl GameState for State {
                 ignore_targetting,
             } => {
                 gui::update_controls_text(&self.ecs, ctx, &next_status);
-                let range_type = crate::move_type::get_attack_range(&attack_type);
+                let range_type = crate::attack_type::get_attack_range(attack_type);
                 let tiles_in_range = crate::range_type::resolve_range_at(&range_type, player_point);
 
                 let result = player::ranged_target(self, ctx, tiles_in_range, ignore_targetting);
@@ -270,8 +271,8 @@ impl GameState for State {
                             // we should generally have a target at this point
                             // if we don't have a point, assume its because we won't need one later
                             let target = result.1.unwrap_or(rltk::Point::zero());
-                            let intent = crate::move_type::get_attack_intent(
-                                &attack_type,
+                            let intent = crate::attack_type::get_attack_intent(
+                                attack_type,
                                 target,
                                 self.attack_modifier,
                             );

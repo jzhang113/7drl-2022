@@ -15,12 +15,6 @@ pub enum AttackType {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-pub enum AttackTiming {
-    Slow,
-    Fast,
-}
-
-#[derive(PartialEq, Copy, Clone)]
 pub enum AttackTrait {
     Damage { amount: i32 },
     Knockback { amount: i32 },
@@ -31,11 +25,7 @@ pub enum AttackTrait {
 
 // check if an attack is can be executed
 // this returns the tile that will hit the target
-pub fn is_attack_valid(
-    attack_type: &AttackType,
-    from_point: Point,
-    target: Point,
-) -> Option<Point> {
+pub fn is_attack_valid(attack_type: AttackType, from_point: Point, target: Point) -> Option<Point> {
     let range_type = get_attack_range(attack_type);
     let shape = get_attack_shape(attack_type);
 
@@ -51,25 +41,26 @@ pub fn is_attack_valid(
 }
 
 // return all points that are affected by an attack
-pub fn each_attack_target(attack_type: &AttackType, from_point: Point) -> Vec<Point> {
+pub fn each_attack_target(attack_type: AttackType, from_point: Point) -> Vec<Point> {
     let shape = get_attack_shape(attack_type);
     crate::range_type::resolve_range_at(&shape, from_point)
 }
 
 // convert an attack into an intent that can be executed by the event system
 pub fn get_attack_intent(
-    attack_type: &AttackType,
+    attack_type: AttackType,
     loc: Point,
     attack_modifier: Option<AttackType>,
 ) -> AttackIntent {
     AttackIntent {
-        main: *attack_type,
+        main: attack_type,
         modifier: attack_modifier,
         loc,
+        delay: get_attack_delay(attack_type),
     }
 }
 
-pub fn get_attack_range(attack_type: &AttackType) -> RangeType {
+pub fn get_attack_range(attack_type: AttackType) -> RangeType {
     match attack_type {
         AttackType::Sweep => RangeType::Single,
         AttackType::Punch => RangeType::Square { size: 1 },
@@ -82,7 +73,7 @@ pub fn get_attack_range(attack_type: &AttackType) -> RangeType {
     }
 }
 
-pub fn get_attack_power(attack_type: &AttackType) -> i32 {
+pub fn get_attack_power(attack_type: AttackType) -> i32 {
     match attack_type {
         AttackType::Sweep => 1,
         AttackType::Punch => 1,
@@ -95,9 +86,9 @@ pub fn get_attack_power(attack_type: &AttackType) -> i32 {
     }
 }
 
-pub fn get_attack_shape(attack_type: &AttackType) -> RangeType {
+pub fn get_attack_shape(attack_type: AttackType) -> RangeType {
     match attack_type {
-        AttackType::Sweep => RangeType::Square { size: 1 },
+        AttackType::Sweep => RangeType::Square { size: 3 },
         AttackType::Punch => RangeType::Single,
         AttackType::Stun => RangeType::Single,
         AttackType::Push => RangeType::Single,
@@ -108,10 +99,10 @@ pub fn get_attack_shape(attack_type: &AttackType) -> RangeType {
     }
 }
 
-pub fn get_attack_speed(attack_type: &AttackType) -> i32 {
+pub fn get_attack_delay(attack_type: AttackType) -> i32 {
     match attack_type {
-        AttackType::Sweep => 0,
-        AttackType::Punch => 1,
+        AttackType::Sweep => 2,
+        AttackType::Punch => 0,
         AttackType::Stun => 2,
         AttackType::Push => 0,
         AttackType::Dodge => 2,
@@ -121,20 +112,7 @@ pub fn get_attack_speed(attack_type: &AttackType) -> i32 {
     }
 }
 
-pub fn get_attack_guard(attack_type: &AttackType) -> i32 {
-    match attack_type {
-        AttackType::Sweep => 0,
-        AttackType::Punch => 0,
-        AttackType::Stun => 0,
-        AttackType::Push => 0,
-        AttackType::Dodge => -2,
-        AttackType::Recover => 0,
-        AttackType::Haymaker => 2,
-        AttackType::Ranged => -4,
-    }
-}
-
-pub fn get_attack_name(attack_type: &AttackType) -> String {
+pub fn get_attack_name(attack_type: AttackType) -> String {
     let name = match attack_type {
         AttackType::Sweep => "sweep",
         AttackType::Punch => "punch",
@@ -149,9 +127,9 @@ pub fn get_attack_name(attack_type: &AttackType) -> String {
     name.to_string()
 }
 
-pub fn get_attack_traits(attack_type: &AttackType) -> Vec<AttackTrait> {
+pub fn get_attack_traits(attack_type: AttackType) -> Vec<AttackTrait> {
     match attack_type {
-        AttackType::Sweep => vec![AttackTrait::Damage { amount: 1 }],
+        AttackType::Sweep => vec![AttackTrait::Damage { amount: 2 }],
         AttackType::Punch => vec![AttackTrait::Damage { amount: 1 }],
         AttackType::Stun => vec![AttackTrait::Damage { amount: 0 }],
         AttackType::Push => vec![AttackTrait::Knockback { amount: 2 }],

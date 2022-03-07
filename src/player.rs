@@ -40,11 +40,12 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
 
                     return RunState::Running;
                 } else {
-                    let attack = AttackIntent {
-                        loc: Point::new(new_x, new_y),
-                        main: AttackType::Punch,
-                        modifier: None,
-                    };
+                    let attack = crate::attack_type::get_attack_intent(
+                        AttackType::Punch,
+                        Point::new(new_x, new_y),
+                        None,
+                    );
+
                     attacks
                         .insert(*player, attack)
                         .expect("Failed to insert new attack from player");

@@ -68,6 +68,7 @@ pub struct AttackIntent {
     pub main: crate::AttackType,
     pub modifier: Option<crate::AttackType>,
     pub loc: Point,
+    pub delay: i32,
 }
 
 #[derive(Component)]

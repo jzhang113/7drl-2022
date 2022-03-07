@@ -128,7 +128,6 @@ pub fn draw_blocked_tiles(ecs: &World, ctx: &mut Rltk) {
     let map = ecs.fetch::<Map>();
 
     ctx.set_active_console(0);
-
     for (index, is_blocked) in map.blocked_tiles.iter().enumerate() {
         if *is_blocked {
             let point = map.index_to_point2d(index);
@@ -141,8 +140,26 @@ pub fn draw_blocked_tiles(ecs: &World, ctx: &mut Rltk) {
             );
         }
     }
-
     ctx.set_active_console(1);
+}
+
+pub fn draw_attacks_in_progress(ecs: &World, ctx: &mut Rltk) {
+    let attacks = ecs.read_storage::<AttackIntent>();
+    let in_progress = ecs.read_storage::<AttackInProgress>();
+
+    for (attack, _) in (&attacks, &in_progress).join() {
+        ctx.set_active_console(0);
+        for point in attack_type::each_attack_target(attack.main, attack.loc) {
+            ctx.set(
+                MAP_X + point.x,
+                MAP_Y + point.y,
+                RGB::named(rltk::DARKRED),
+                RGB::named(rltk::BLACK),
+                rltk::to_cp437('█'),
+            );
+        }
+        ctx.set_active_console(1);
+    }
 }
 
 fn highlight_bg(ctx: &mut Rltk, pos: &rltk::Point, color: RGB) {

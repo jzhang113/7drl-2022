@@ -155,12 +155,12 @@ pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
 
 pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
     let mut part_hash = std::collections::HashMap::new();
-    part_hash.insert(rltk::Point::new(0, 1), rltk::to_cp437('!'));
-    part_hash.insert(rltk::Point::new(0, -1), rltk::to_cp437('!'));
+    part_hash.insert(rltk::Point::new(1, 1), rltk::to_cp437('!'));
+    part_hash.insert(rltk::Point::new(1, 2), rltk::to_cp437('!'));
 
     let mut part_hash_2 = std::collections::HashMap::new();
-    part_hash_2.insert(rltk::Point::new(1, 0), rltk::to_cp437('!'));
-    part_hash_2.insert(rltk::Point::new(-1, 0), rltk::to_cp437('!'));
+    part_hash_2.insert(rltk::Point::new(-1, 1), rltk::to_cp437('!'));
+    part_hash_2.insert(rltk::Point::new(-1, 2), rltk::to_cp437('!'));
 
     let part_list = vec![
         MonsterPart {
@@ -200,7 +200,7 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
             max: 10,
         })
         .with(Moveset {
-            moves: vec![(AttackType::Haymaker, 0.25), (AttackType::Punch, 0.75)],
+            moves: vec![(AttackType::Sweep, 0.25), (AttackType::Punch, 0.75)],
         })
         .with(MultiTile {
             bounds: all_bounds(&part_list),
@@ -264,7 +264,7 @@ pub fn build_empty_barrel(ecs: &mut World, point: Point, _quality: i32) -> Entit
     barrel_builder(ecs, point).build()
 }
 
-pub fn build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Entity {
+pub fn _build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Entity {
     ecs.create_entity()
         .with(crate::Position {
             x: point.x,
