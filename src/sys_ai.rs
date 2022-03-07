@@ -5,8 +5,20 @@ use specs::prelude::*;
 pub enum Behavior {
     Sleep,
     Wander,
-    Chase,
+    Chase {
+        target_point: rltk::Point,
+    },
+    Attack {
+        attack: crate::AttackType,
+        attack_loc: rltk::Point,
+    },
     Flee,
+}
+
+enum NextIntent {
+    None,
+    Attack { intent: crate::AttackIntent },
+    Move { intent: crate::MoveIntent },
 }
 
 pub struct AiSystem;
@@ -24,6 +36,7 @@ impl<'a> System<'a> for AiSystem {
         ReadStorage<'a, crate::MultiTile>,
         ReadExpect<'a, Entity>,
         WriteExpect<'a, crate::Map>,
+        WriteExpect<'a, crate::ParticleBuilder>,
         WriteExpect<'a, rltk::RandomNumberGenerator>,
     );
 
@@ -40,10 +53,11 @@ impl<'a> System<'a> for AiSystem {
             multis,
             player,
             mut map,
+            mut p_builder,
             mut rng,
         ) = data;
         let mut turn_done = Vec::new();
-        let player_pos = positions.get(*player).unwrap();
+        let player_point = positions.get(*player).unwrap().as_point();
 
         for (ent, _turn, pos, state, viewshed, moveset, multi) in (
             &entities,
@@ -56,49 +70,100 @@ impl<'a> System<'a> for AiSystem {
         )
             .join()
         {
-            let curr_index = map.get_index(pos.x, pos.y);
-            let can_see_player = viewshed
-                .visible
-                .iter()
-                .any(|pos| pos.x == player_pos.x && pos.y == player_pos.y);
+            let action = self.next_step(
+                ent,
+                pos,
+                state,
+                viewshed,
+                moveset,
+                multi,
+                player_point,
+                &mut *map,
+                &mut *p_builder,
+                &mut *rng,
+            );
 
+            match action {
+                NextIntent::Attack { intent } => {
+                    attacks
+                        .insert(ent, intent)
+                        .expect("Failed to insert attack from AI");
+                }
+                NextIntent::Move { intent } => {
+                    moves
+                        .insert(ent, intent)
+                        .expect("Failed to insert movement from AI");
+                }
+                NextIntent::None => {}
+            }
+
+            turn_done.push(ent);
+        }
+
+        for done in turn_done.iter() {
+            can_act.remove(*done);
+        }
+    }
+}
+
+impl AiSystem {
+    fn next_step(
+        &mut self,
+        ent: Entity,
+        pos: &crate::Position,
+        state: &mut crate::AiState,
+        viewshed: &crate::Viewshed,
+        moveset: &crate::Moveset,
+        multi: Option<&crate::MultiTile>,
+        player_point: rltk::Point,
+        map: &mut crate::Map,
+        p_builder: &mut crate::ParticleBuilder,
+        rng: &mut rltk::RandomNumberGenerator,
+    ) -> NextIntent {
+        let curr_index = map.get_index(pos.x, pos.y);
+
+        loop {
             match state.status {
                 Behavior::Sleep => {
                     // the do nothing state
                     // TODO: trigger wake up
+                    return NextIntent::None;
                 }
                 Behavior::Wander => {
-                    if can_see_player {
-                        state.status = Behavior::Chase;
-                        state.tracking = Some(rltk::Point::new(player_pos.x, player_pos.y));
+                    if can_see_target(viewshed, player_point) {
+                        state.status = Behavior::Chase {
+                            target_point: player_point,
+                        };
                     } else {
                         // pick a random tile we can move to
                         let exits = map.get_available_exits_for(curr_index, ent, multi);
                         if exits.len() > 0 {
                             let exit_index = rng.range(0, exits.len());
                             let chosen_exit = exits[exit_index].0;
-                            let movement = MoveIntent {
-                                loc: map.index_to_point2d(chosen_exit),
+                            return NextIntent::Move {
+                                intent: MoveIntent {
+                                    loc: map.index_to_point2d(chosen_exit),
+                                },
                             };
-
-                            moves
-                                .insert(ent, movement)
-                                .expect("Failed to insert movement from AI");
+                        } else {
+                            // TODO: help we're stuck
+                            return NextIntent::None;
                         }
                     }
                 }
-                Behavior::Chase => {
-                    if can_see_player {
-                        // check if we have any attacks that can hit
-                        let mut attack = None;
-                        let orig_point = rltk::Point::new(pos.x, pos.y);
-                        let player_point = rltk::Point::new(player_pos.x, player_pos.y);
-
+                Behavior::Chase { target_point } => {
+                    if can_see_target(viewshed, player_point) {
                         // track the player's current position
-                        state.tracking = Some(player_point);
+                        state.status = Behavior::Chase {
+                            target_point: player_point,
+                        };
+
+                        // check if we have any attacks that can hit
+                        let orig_point = pos.as_point();
 
                         let rolled_prob: f32 = rng.rand();
                         let mut cumul_prob: f32 = 0.0;
+                        let mut attack_found = false;
 
                         // TODO: smarter attack selection
                         // this is fine when all of the attacks have similar attack ranges
@@ -114,83 +179,83 @@ impl<'a> System<'a> for AiSystem {
                                 orig_point,
                                 player_point,
                             ) {
-                                attack = Some((potential_attack, attack_loc));
+                                state.status = Behavior::Attack {
+                                    attack: *potential_attack,
+                                    attack_loc: attack_loc,
+                                };
+                                attack_found = true;
                                 break;
                             }
                         }
 
-                        match attack {
-                            None => {
-                                // if we can't hit, just move towards the player
-                                let curr_index = map.get_index(pos.x, pos.y);
-                                let player_index = map.get_index(player_pos.x, player_pos.y);
-                                let movement =
-                                    move_towards(ent, &mut *map, curr_index, player_index, multi);
+                        if !attack_found {
+                            // if we can't hit, just move towards the player
+                            let player_index = map.point2d_to_index(player_point);
+                            let movement = move_towards(ent, map, curr_index, player_index, multi);
 
-                                match movement {
-                                    None => {
-                                        // we can't move towards the player for some reason, so give up chasing
-                                        state.status = Behavior::Wander;
-                                        state.tracking = None;
-                                    }
-                                    Some(movement) => {
-                                        moves
-                                            .insert(ent, movement)
-                                            .expect("Failed to insert movement from AI");
-                                    }
+                            match movement {
+                                None => {
+                                    // we can't move towards the player for some reason, so give up chasing
+                                    state.status = Behavior::Wander;
+                                    return NextIntent::None;
                                 }
-                            }
-                            Some((attack, attack_loc)) => {
-                                let intent = crate::attack_type::get_attack_intent(
-                                    *attack, attack_loc, None,
-                                );
-
-                                attacks
-                                    .insert(ent, intent)
-                                    .expect("Failed to insert attack from AI");
+                                Some(movement) => {
+                                    return NextIntent::Move { intent: movement };
+                                }
                             }
                         }
                     } else {
-                        match state.tracking {
-                            None => {
-                                // we don't have anything to chase, return to wander
-                                state.status = Behavior::Wander;
-                                state.tracking = None;
-                            }
-                            Some(target_point) => {
-                                let target_index = map.point2d_to_index(target_point);
-                                let movement =
-                                    move_towards(ent, &mut *map, curr_index, target_index, multi);
+                        // we don't see the player, move to the last tracked point
+                        let target_index = map.point2d_to_index(target_point);
+                        let movement = move_towards(ent, map, curr_index, target_index, multi);
 
-                                match movement {
-                                    None => {
-                                        // most likely reason we got here is because we reached the target point
-                                        // if we didn't see the player on the way, return to wandering
-                                        state.status = Behavior::Wander;
-                                        state.tracking = None;
-                                    }
-                                    Some(movement) => {
-                                        moves
-                                            .insert(ent, movement)
-                                            .expect("Failed to insert movement from AI");
-                                    }
-                                }
+                        match movement {
+                            None => {
+                                // most likely reason we got here is because we reached the target point
+                                // if we didn't see the player on the way, return to wandering
+                                state.status = Behavior::Wander;
+                                return NextIntent::None;
+                            }
+                            Some(movement) => {
+                                return NextIntent::Move { intent: movement };
                             }
                         }
                     }
                 }
+                Behavior::Attack { attack, attack_loc } => {
+                    let intent = crate::attack_type::get_attack_intent(attack, attack_loc, None);
+
+                    p_builder.make_particle(crate::ParticleRequest {
+                        color: rltk::RGB::named(rltk::RED),
+                        lifetime: 300.0,
+                        position: attack_loc,
+                        symbol: rltk::to_cp437('Q'),
+                    });
+
+                    if can_see_target(viewshed, player_point) {
+                        state.status = Behavior::Chase {
+                            target_point: player_point,
+                        };
+                    } else {
+                        state.status = Behavior::Wander;
+                    }
+
+                    return NextIntent::Attack { intent };
+                }
                 Behavior::Flee => {
                     // TODO
+                    return NextIntent::None;
                 }
             }
-
-            turn_done.push(ent);
-        }
-
-        for done in turn_done.iter() {
-            can_act.remove(*done);
         }
     }
+}
+
+fn can_see_target(viewshed: &crate::Viewshed, target: rltk::Point) -> bool {
+    viewshed
+        .visible
+        .iter()
+        .any(|pos| pos.x == target.x && pos.y == target.y)
 }
 
 fn move_towards(

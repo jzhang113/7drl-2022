@@ -149,7 +149,6 @@ pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
         .with(BlocksTile)
         .with(AiState {
             status: Behavior::Wander,
-            tracking: None,
         })
 }
 

@@ -104,7 +104,6 @@ pub struct BlockAttack {
 #[derive(Component)]
 pub struct AiState {
     pub status: crate::Behavior,
-    pub tracking: Option<rltk::Point>,
 }
 
 #[derive(Component)]
