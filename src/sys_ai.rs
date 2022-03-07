@@ -1,5 +1,5 @@
-use super::{AiState, AttackIntent, CanActFlag, Map, MoveIntent, Moveset, Position, Viewshed};
-use rltk::{Algorithm2D, BaseMap};
+use crate::{Map, MoveIntent};
+use rltk::Algorithm2D;
 use specs::prelude::*;
 
 pub enum Behavior {
@@ -14,15 +14,16 @@ pub struct AiSystem;
 impl<'a> System<'a> for AiSystem {
     type SystemData = (
         Entities<'a>,
-        WriteStorage<'a, CanActFlag>,
-        ReadStorage<'a, Position>,
-        WriteStorage<'a, MoveIntent>,
-        WriteStorage<'a, AttackIntent>,
-        WriteStorage<'a, AiState>,
-        ReadStorage<'a, Viewshed>,
-        ReadStorage<'a, Moveset>,
+        WriteStorage<'a, crate::CanActFlag>,
+        ReadStorage<'a, crate::Position>,
+        WriteStorage<'a, crate::MoveIntent>,
+        WriteStorage<'a, crate::AttackIntent>,
+        WriteStorage<'a, crate::AiState>,
+        ReadStorage<'a, crate::Viewshed>,
+        ReadStorage<'a, crate::Moveset>,
+        ReadStorage<'a, crate::MultiTile>,
         ReadExpect<'a, Entity>,
-        WriteExpect<'a, Map>,
+        WriteExpect<'a, crate::Map>,
         WriteExpect<'a, rltk::RandomNumberGenerator>,
     );
 
@@ -36,6 +37,7 @@ impl<'a> System<'a> for AiSystem {
             mut states,
             viewsheds,
             movesets,
+            multis,
             player,
             mut map,
             mut rng,
@@ -43,13 +45,14 @@ impl<'a> System<'a> for AiSystem {
         let mut turn_done = Vec::new();
         let player_pos = positions.get(*player).unwrap();
 
-        for (ent, _turn, pos, state, viewshed, moveset) in (
+        for (ent, _turn, pos, state, viewshed, moveset, multi) in (
             &entities,
             &can_act,
             &positions,
             &mut states,
             &viewsheds,
             &movesets,
+            (&multis).maybe(),
         )
             .join()
         {
@@ -70,7 +73,7 @@ impl<'a> System<'a> for AiSystem {
                         state.tracking = Some(rltk::Point::new(player_pos.x, player_pos.y));
                     } else {
                         // pick a random tile we can move to
-                        let exits = map.get_available_exits_for(curr_index, ent);
+                        let exits = map.get_available_exits_for(curr_index, ent, multi);
                         if exits.len() > 0 {
                             let exit_index = rng.range(0, exits.len());
                             let chosen_exit = exits[exit_index].0;
@@ -124,7 +127,7 @@ impl<'a> System<'a> for AiSystem {
                                 let curr_index = map.get_index(pos.x, pos.y);
                                 let player_index = map.get_index(player_pos.x, player_pos.y);
                                 let movement =
-                                    move_towards(ent, &mut *map, curr_index, player_index);
+                                    move_towards(ent, &mut *map, curr_index, player_index, multi);
 
                                 match movement {
                                     None => {
@@ -161,7 +164,7 @@ impl<'a> System<'a> for AiSystem {
                             Some(target_point) => {
                                 let target_index = map.point2d_to_index(target_point);
                                 let movement =
-                                    move_towards(ent, &mut *map, curr_index, target_index);
+                                    move_towards(ent, &mut *map, curr_index, target_index, multi);
 
                                 match movement {
                                     None => {
@@ -199,15 +202,16 @@ fn move_towards(
     map: &mut Map,
     curr_index: usize,
     target_index: usize,
+    multi_component: Option<&crate::MultiTile>,
 ) -> Option<MoveIntent> {
-    map.search_entity = Some(entity);
+    map.set_additional_args(entity, multi_component);
     let path = rltk::a_star_search(curr_index, target_index, &*map);
-    map.search_entity = None;
 
     if path.success && path.steps.len() > 1 {
         let next_pos = map.index_to_point2d(path.steps[1]);
         return Some(MoveIntent { loc: next_pos });
     } else {
+        println!("No path exists!");
         return None;
     }
 }

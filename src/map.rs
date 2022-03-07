@@ -24,6 +24,7 @@ pub struct Map {
     pub blocked_tiles: Vec<bool>,
     pub level_exit: usize,
     pub search_entity: Option<Entity>,
+    pub multi_component: Option<Vec<crate::MonsterPart>>,
 }
 
 impl BaseMap for Map {
@@ -80,7 +81,7 @@ impl Map {
         }
     }
 
-    fn is_exit_valid(&self, x: i32, y: i32) -> bool {
+    fn is_tile_valid(&self, x: i32, y: i32) -> bool {
         if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
             return false;
         }
@@ -92,18 +93,62 @@ impl Map {
             return true;
         }
 
+        // walls are always invalid
+        if self.tiles[index] == TileType::Wall {
+            return false;
+        }
+
         // blocked tiles can be valid if they belong to the search_entity (creatures are not blocked by themselves)
-        match self.search_entity {
+        let result = match self.search_entity {
             Some(search_entity) => match self.creature_map.get(&index) {
                 Some(map_entity) => *map_entity == search_entity,
                 None => false,
             },
             None => false,
-        }
+        };
+
+        result
     }
 
-    pub fn is_exit_valid_for(&mut self, x: i32, y: i32, entity: Entity) -> bool {
+    fn is_exit_valid(&self, x: i32, y: i32) -> bool {
+        if !self.is_tile_valid(x, y) {
+            return false;
+        }
+
+        // if search_entity is a multi-tile entity, test the actual move first
+        if let Some(multitiles) = &self.multi_component {
+            for part in multitiles {
+                for part_pos in part.symbol_map.keys() {
+                    let new_x = x + part_pos.x;
+                    let new_y = y + part_pos.y;
+
+                    if !self.is_tile_valid(new_x, new_y) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    pub fn set_additional_args(
+        &mut self,
+        entity: Entity,
+        multi_component: Option<&crate::MultiTile>,
+    ) {
         self.search_entity = Some(entity);
+        self.multi_component = multi_component.map(|comp| comp.part_list.clone());
+    }
+
+    pub fn is_exit_valid_for(
+        &mut self,
+        x: i32,
+        y: i32,
+        entity: Entity,
+        multi_component: Option<&crate::MultiTile>,
+    ) -> bool {
+        self.set_additional_args(entity, multi_component);
         self.is_exit_valid(x, y)
     }
 
@@ -111,8 +156,9 @@ impl Map {
         &mut self,
         idx: usize,
         entity: Entity,
+        multi_component: Option<&crate::MultiTile>,
     ) -> rltk::SmallVec<[(usize, f32); 10]> {
-        self.search_entity = Some(entity);
+        self.set_additional_args(entity, multi_component);
         self.get_available_exits(idx)
     }
 
@@ -256,7 +302,7 @@ impl Map {
         let next_index = self.point2d_to_index(next);
 
         // if the destination is blocked by something other than us, quit moving
-        if !self.is_exit_valid_for(next.x, next.y, creature) {
+        if !self.is_exit_valid_for(next.x, next.y, creature, multi_component) {
             return false;
         }
 
@@ -297,6 +343,7 @@ pub fn build_rogue_map(
         blocked_tiles: vec![false; dim],
         level_exit: 0,
         search_entity: None,
+        multi_component: None,
     };
 
     const MAX_ROOMS: i32 = 1;

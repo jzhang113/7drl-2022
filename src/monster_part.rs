@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct MonsterPart {
     pub symbol_map: HashMap<rltk::Point, rltk::FontCharType>,
     pub health: i32,
