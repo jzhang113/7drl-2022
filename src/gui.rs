@@ -74,6 +74,7 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
     let renderables = ecs.read_storage::<Renderable>();
     let particles = ecs.read_storage::<ParticleLifetime>();
     let multitiles = ecs.read_storage::<MultiTile>();
+    let facings = ecs.read_storage::<Facing>();
     let map = ecs.fetch::<Map>();
 
     for (pos, render, particle) in (&positions, &renderables, &particles).join() {
@@ -93,15 +94,27 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
         ctx.set_active_console(1);
     }
 
-    for (pos, render, mtt) in (&positions, &renderables, (&multitiles).maybe()).join() {
+    for (pos, render, mtt, facing) in (
+        &positions,
+        &renderables,
+        (&multitiles).maybe(),
+        (&facings).maybe(),
+    )
+        .join()
+    {
+        let symbol = if let Some(facing) = facing {
+            match facing.direction {
+                Direction::N => rltk::to_cp437('^'),
+                Direction::E => rltk::to_cp437('>'),
+                Direction::S => rltk::to_cp437('v'),
+                Direction::W => rltk::to_cp437('<'),
+            }
+        } else {
+            render.symbol
+        };
+
         if map.visible_tiles[map.get_index(pos.x, pos.y)] || SHOW_REND {
-            ctx.set(
-                MAP_X + pos.x,
-                MAP_Y + pos.y,
-                render.fg,
-                render.bg,
-                render.symbol,
-            );
+            ctx.set(MAP_X + pos.x, MAP_Y + pos.y, render.fg, render.bg, symbol);
         }
 
         if let Some(mtt) = mtt {

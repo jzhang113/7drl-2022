@@ -204,7 +204,9 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
         .with(MultiTile {
             bounds: all_bounds(&part_list),
             part_list: part_list,
-            facing: crate::Direction::N,
+        })
+        .with(Facing {
+            direction: crate::Direction::N,
         })
         .build()
 }

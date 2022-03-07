@@ -127,6 +127,10 @@ pub enum Direction {
 #[derive(Component)]
 pub struct MultiTile {
     pub part_list: Vec<crate::MonsterPart>,
-    pub facing: Direction,
     pub bounds: rltk::Rect,
+}
+
+#[derive(Component)]
+pub struct Facing {
+    pub direction: Direction,
 }

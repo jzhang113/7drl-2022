@@ -90,6 +90,7 @@ impl State {
         self.ecs.register::<Openable>();
 
         self.ecs.register::<MultiTile>();
+        self.ecs.register::<Facing>();
     }
 
     fn new_game(&mut self) {
