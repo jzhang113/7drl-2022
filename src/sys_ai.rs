@@ -109,14 +109,12 @@ impl<'a> System<'a> for AiSystem {
                                 continue;
                             }
 
-                            if crate::move_type::is_attack_valid(
+                            if let Some(attack_loc) = crate::move_type::is_attack_valid(
                                 &potential_attack,
                                 orig_point,
                                 player_point,
-                            )
-                            .is_some()
-                            {
-                                attack = Some(potential_attack);
+                            ) {
+                                attack = Some((potential_attack, attack_loc));
                                 break;
                             }
                         }
@@ -142,12 +140,9 @@ impl<'a> System<'a> for AiSystem {
                                     }
                                 }
                             }
-                            Some(attack) => {
-                                let intent = crate::move_type::get_attack_intent(
-                                    &attack,
-                                    player_point,
-                                    None,
-                                );
+                            Some((attack, attack_loc)) => {
+                                let intent =
+                                    crate::move_type::get_attack_intent(&attack, attack_loc, None);
 
                                 attacks
                                     .insert(ent, intent)
