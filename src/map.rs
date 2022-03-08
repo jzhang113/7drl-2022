@@ -10,6 +10,12 @@ pub enum TileType {
     Floor,
 }
 
+#[derive(Default)]
+struct SearchArgs {
+    search_entity: Option<Entity>,
+    multi_component: Option<Vec<crate::MonsterPart>>,
+}
+
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
@@ -23,8 +29,7 @@ pub struct Map {
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
     pub level_exit: usize,
-    pub search_entity: Option<Entity>,
-    pub multi_component: Option<Vec<crate::MonsterPart>>,
+    search_args: SearchArgs,
 }
 
 impl BaseMap for Map {
@@ -88,6 +93,7 @@ impl Map {
 
         let index = self.get_index(x, y);
 
+        // TODO: multi-tile bodies can still walk into players since player doesn't have a collision
         // non-blocked tiles are always valid
         if !self.blocked_tiles[index] {
             return true;
@@ -99,7 +105,7 @@ impl Map {
         }
 
         // blocked tiles can be valid if they belong to the search_entity (creatures are not blocked by themselves)
-        let result = match self.search_entity {
+        let result = match self.search_args.search_entity {
             Some(search_entity) => match self.creature_map.get(&index) {
                 Some(map_entity) => *map_entity == search_entity,
                 None => false,
@@ -116,7 +122,7 @@ impl Map {
         }
 
         // if search_entity is a multi-tile entity, test the actual move first
-        if let Some(multitiles) = &self.multi_component {
+        if let Some(multitiles) = &self.search_args.multi_component {
             for part in multitiles {
                 for part_pos in part.symbol_map.keys() {
                     let new_x = x + part_pos.x;
@@ -137,8 +143,8 @@ impl Map {
         entity: Entity,
         multi_component: Option<&crate::MultiTile>,
     ) {
-        self.search_entity = Some(entity);
-        self.multi_component = multi_component.map(|comp| comp.part_list.clone());
+        self.search_args.search_entity = Some(entity);
+        self.search_args.multi_component = multi_component.map(|comp| comp.part_list.clone());
     }
 
     pub fn is_exit_valid_for(
@@ -342,8 +348,7 @@ pub fn build_rogue_map(
         visible_tiles: vec![false; dim],
         blocked_tiles: vec![false; dim],
         level_exit: 0,
-        search_entity: None,
-        multi_component: None,
+        search_args: SearchArgs::default(),
     };
 
     const MAX_ROOMS: i32 = 1;

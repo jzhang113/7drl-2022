@@ -117,6 +117,7 @@ pub struct Item;
 #[derive(Component)]
 pub struct Openable;
 
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Direction {
     N,
     E,
@@ -130,7 +131,7 @@ pub struct MultiTile {
     pub bounds: rltk::Rect,
 }
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone)]
 pub struct Facing {
     pub direction: Direction,
 }
