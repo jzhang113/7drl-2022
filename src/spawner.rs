@@ -203,6 +203,7 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
         })
         .with(Moveset {
             moves: vec![(AttackType::Sweep, 0.25), (AttackType::Punch, 0.75)],
+            bump_attack: AttackType::Punch,
         })
         .with(MultiTile {
             bounds: all_bounds(&part_list),
@@ -233,6 +234,7 @@ pub fn build_archer(ecs: &mut World, point: Point) -> Entity {
         .with(Health { current: 2, max: 2 })
         .with(Moveset {
             moves: vec![(AttackType::Punch, 0.25), (AttackType::Ranged, 0.75)],
+            bump_attack: AttackType::Punch,
         })
         .build()
 }
