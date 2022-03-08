@@ -227,12 +227,7 @@ impl GameState for State {
         sys_particle::cleanup_particles(&mut self.ecs, ctx);
 
         // draw map + gui
-        gui::draw_map(&self.ecs, ctx);
-        gui::draw_renderables(&self.ecs, ctx);
-        gui::draw_sidebar(&self.ecs, ctx);
-
-        gui::draw_blocked_tiles(&self.ecs, ctx);
-        gui::draw_attacks_in_progress(&self.ecs, ctx);
+        gui::draw_all(&self.ecs, ctx);
 
         let mut next_status;
         let player_point;
@@ -337,6 +332,8 @@ impl GameState for State {
             }
             RunState::GenerateMap => {
                 self.change_level();
+                // update visibility immediately so the screen isn't dark for a cycle
+                sys_visibility::VisibilitySystem.run_now(&self.ecs);
                 next_status = RunState::AwaitingInput;
             }
             RunState::Dead => {

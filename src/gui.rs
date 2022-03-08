@@ -19,6 +19,15 @@ const SHOW_MAP: bool = false;
 const SHOW_REND: bool = false;
 // #endregion
 
+pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
+    draw_map(ecs, ctx);
+    draw_renderables(ecs, ctx);
+    draw_sidebar(ecs, ctx);
+
+    draw_blocked_tiles(ecs, ctx);
+    draw_attacks_in_progress(ecs, ctx);
+}
+
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     ctx.draw_box(
         MAP_X - 1,
