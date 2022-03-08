@@ -44,8 +44,17 @@ impl ParticleBuilder {
         }
     }
 
-    pub fn make_particle(&mut self, request: ParticleRequest) {
+    fn make_particle(&mut self, request: ParticleRequest) {
         self.requests.push(request);
+    }
+
+    pub fn make_hit_particle(&mut self, point: Point) {
+        self.make_particle(crate::ParticleRequest {
+            color: rltk::RGB::named(rltk::RED),
+            lifetime: 300.0,
+            position: point,
+            symbol: rltk::to_cp437('!'),
+        });
     }
 }
 

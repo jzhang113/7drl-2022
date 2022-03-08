@@ -117,7 +117,7 @@ impl AiSystem {
         multi: Option<&crate::MultiTile>,
         player_point: rltk::Point,
         map: &mut crate::Map,
-        p_builder: &mut crate::ParticleBuilder,
+        _p_builder: &mut crate::ParticleBuilder,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> NextIntent {
         let curr_index = map.get_index(pos.x, pos.y);
@@ -224,13 +224,6 @@ impl AiSystem {
                 }
                 Behavior::Attack { attack, attack_loc } => {
                     let intent = crate::attack_type::get_attack_intent(attack, attack_loc, None);
-
-                    p_builder.make_particle(crate::ParticleRequest {
-                        color: rltk::RGB::named(rltk::RED),
-                        lifetime: 300.0,
-                        position: attack_loc,
-                        symbol: rltk::to_cp437('Q'),
-                    });
 
                     if can_see_target(viewshed, player_point) {
                         state.status = Behavior::Chase {

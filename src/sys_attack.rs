@@ -42,15 +42,15 @@ impl<'a> System<'a> for AttackSystem {
                         for point in targets {
                             let point_index = map.point2d_to_index(point);
                             if let Some(aff_ent) = map.creature_map.get(&point_index) {
+                                // avoid self damage
+                                if *aff_ent == ent {
+                                    continue;
+                                }
+
                                 if let Some(mut aff_health) = healths.get_mut(*aff_ent) {
                                     aff_health.current -= amount;
 
-                                    p_builder.make_particle(crate::ParticleRequest {
-                                        color: rltk::RGB::named(rltk::RED),
-                                        lifetime: 300.0,
-                                        position: point,
-                                        symbol: rltk::to_cp437('!'),
-                                    });
+                                    p_builder.make_hit_particle(point);
                                 }
                             }
                         }
