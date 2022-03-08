@@ -133,8 +133,6 @@ impl<'a> System<'a> for AiSystem {
 
 impl AiSystem {
     fn next_step(&mut self, data: AiStepData) -> NextIntent {
-        let curr_index = data.map.get_index(data.pos.x, data.pos.y);
-
         loop {
             match data.state.status {
                 Behavior::Sleep => {
@@ -148,22 +146,7 @@ impl AiSystem {
                             target_point: data.player_point,
                         };
                     } else {
-                        // pick a random tile we can move to
-                        let exits = data
-                            .map
-                            .get_available_exits_for(curr_index, data.ent, data.multi);
-                        if exits.len() > 0 {
-                            let exit_index = data.rng.range(0, exits.len());
-                            let chosen_exit = exits[exit_index].0;
-                            return NextIntent::Move {
-                                intent: MoveIntent {
-                                    loc: data.map.index_to_point2d(chosen_exit),
-                                },
-                            };
-                        } else {
-                            // TODO: help we're stuck
-                            return NextIntent::None;
-                        }
+                        return Self::move_random(data);
                     }
                 }
                 Behavior::Chase { target_point } => {
@@ -208,11 +191,11 @@ impl AiSystem {
 
                         if !attack_found {
                             // if we can't hit, just move towards the player
-                            return self.move_towards(data.player_point, data);
+                            return Self::move_towards(data.player_point, data);
                         }
                     } else {
                         // we don't see the player, move to the last tracked point
-                        return self.move_towards(target_point, data);
+                        return Self::move_towards(target_point, data);
                     }
                 }
                 Behavior::AttackStartup { turns_left, info } => {
@@ -267,15 +250,31 @@ impl AiSystem {
         }
     }
 
-    fn move_towards(&self, target_point: rltk::Point, data: AiStepData) -> NextIntent {
+    fn move_random(data: AiStepData) -> NextIntent {
+        let curr_index = data.map.get_index(data.pos.x, data.pos.y);
+
+        // pick a random tile we can move to
+        let exits = data
+            .map
+            .get_available_exits_for(curr_index, data.ent, data.multi);
+        if exits.len() > 0 {
+            let exit_index = data.rng.range(0, exits.len());
+            let chosen_exit = exits[exit_index].0;
+            return NextIntent::Move {
+                intent: MoveIntent {
+                    loc: data.map.index_to_point2d(chosen_exit),
+                },
+            };
+        } else {
+            // TODO: help we're stuck
+            return NextIntent::None;
+        }
+    }
+
+    fn move_towards(target_point: rltk::Point, data: AiStepData) -> NextIntent {
+        let curr_index = data.map.get_index(data.pos.x, data.pos.y);
         let target_index = data.map.point2d_to_index(target_point);
-        let path = Self::get_path_to(
-            data.ent,
-            data.map,
-            data.map.get_index(data.pos.x, data.pos.y),
-            target_index,
-            data.multi,
-        );
+        let path = Self::get_path_to(data.ent, data.map, curr_index, target_index, data.multi);
 
         match path {
             None => {
@@ -290,9 +289,22 @@ impl AiSystem {
                     }
                 }
 
-                // TODO: can't get to the target
-                data.state.status = Behavior::Wander;
-                return NextIntent::None;
+                // no path to target, attempt to move towards the target
+                let curr_point = data.pos.as_point();
+                let dir = crate::Direction::get_direction_towards(curr_point, target_point);
+                let next_point = crate::Direction::point_in_direction(curr_point, dir);
+
+                if data
+                    .map
+                    .is_exit_valid_for(next_point.x, next_point.y, data.ent, data.multi)
+                {
+                    return NextIntent::Move {
+                        intent: MoveIntent { loc: next_point },
+                    };
+                }
+
+                // can't move towards the target, just make a random move
+                return Self::move_random(data);
             }
             Some(path) => {
                 let next_pos = data.map.index_to_point2d(path.steps[1]);

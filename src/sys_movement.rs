@@ -30,22 +30,7 @@ impl<'a> System<'a> for MovementSystem {
             let new_pos = movement.loc;
 
             if let Some(facing) = facing {
-                let dx = new_pos.x - pos.x;
-                let dy = new_pos.y - pos.y;
-
-                facing.direction = if dx.abs() > dy.abs() {
-                    match dx.signum() {
-                        1 => crate::Direction::E,
-                        -1 => crate::Direction::W,
-                        _ => unreachable!(), // if dx.signum is 0, dx = 0, but we can't be in this branch in that case
-                    }
-                } else {
-                    match dy.signum() {
-                        1 => crate::Direction::S,
-                        -1 => crate::Direction::N,
-                        _ => crate::Direction::N,
-                    }
-                }
+                facing.direction = crate::Direction::get_direction_towards(pos.as_point(), new_pos);
             }
 
             // update the position if we successfully moved to new_pos

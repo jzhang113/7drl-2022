@@ -119,14 +119,6 @@ pub struct Item;
 #[derive(Component)]
 pub struct Openable;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Direction {
-    N,
-    E,
-    S,
-    W,
-}
-
 #[derive(Component)]
 pub struct MultiTile {
     pub part_list: Vec<crate::MonsterPart>,
@@ -135,7 +127,7 @@ pub struct MultiTile {
 
 #[derive(Component, Copy, Clone)]
 pub struct Facing {
-    pub direction: Direction,
+    pub direction: crate::Direction,
 }
 
 #[derive(Component, Clone)]
