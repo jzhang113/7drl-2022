@@ -6,13 +6,14 @@ impl<'a> System<'a> for MapIndexSystem {
     type SystemData = (
         Entities<'a>,
         WriteExpect<'a, crate::Map>,
+        ReadExpect<'a, Entity>,
         ReadStorage<'a, crate::Position>,
         ReadStorage<'a, crate::BlocksTile>,
         ReadStorage<'a, crate::MultiTile>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut map, positions, blockers, multis) = data;
+        let (entities, mut map, player, positions, blockers, multis) = data;
 
         // Fix tiles that should be blocked
         map.set_blocked_tiles();
@@ -32,6 +33,12 @@ impl<'a> System<'a> for MapIndexSystem {
                     }
                 }
             }
+        }
+
+        // special handling for the player since they are not BlocksTile
+        if let Some(player_pos) = positions.get(*player) {
+            let player_index = map.get_index(player_pos.x, player_pos.y);
+            map.creature_map.insert(player_index, *player);
         }
     }
 }
