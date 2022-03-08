@@ -26,6 +26,19 @@ pub struct AttackInfo {
     attack_loc: rltk::Point,
 }
 
+struct AiStepData<'a> {
+    ent: Entity,
+    pos: &'a crate::Position,
+    state: &'a mut crate::AiState,
+    viewshed: &'a crate::Viewshed,
+    moveset: &'a crate::Moveset,
+    multi: Option<&'a crate::MultiTile>,
+    player_point: rltk::Point,
+    map: &'a mut crate::Map,
+    p_builder: &'a mut crate::ParticleBuilder,
+    rng: &'a mut rltk::RandomNumberGenerator,
+}
+
 pub struct AiSystem;
 
 impl<'a> System<'a> for AiSystem {
@@ -77,7 +90,7 @@ impl<'a> System<'a> for AiSystem {
         )
             .join()
         {
-            let action = self.next_step(
+            let action = self.next_step(AiStepData {
                 ent,
                 pos,
                 state,
@@ -85,10 +98,10 @@ impl<'a> System<'a> for AiSystem {
                 moveset,
                 multi,
                 player_point,
-                &mut *map,
-                &mut *p_builder,
-                &mut *rng,
-            );
+                map: &mut *map,
+                p_builder: &mut *p_builder,
+                rng: &mut *rng,
+            });
 
             match action {
                 NextIntent::Attack { intent } => {
@@ -119,42 +132,32 @@ impl<'a> System<'a> for AiSystem {
 }
 
 impl AiSystem {
-    fn next_step(
-        &mut self,
-        ent: Entity,
-        pos: &crate::Position,
-        state: &mut crate::AiState,
-        viewshed: &crate::Viewshed,
-        moveset: &crate::Moveset,
-        multi: Option<&crate::MultiTile>,
-        player_point: rltk::Point,
-        map: &mut crate::Map,
-        p_builder: &mut crate::ParticleBuilder,
-        rng: &mut rltk::RandomNumberGenerator,
-    ) -> NextIntent {
-        let curr_index = map.get_index(pos.x, pos.y);
+    fn next_step(&mut self, data: AiStepData) -> NextIntent {
+        let curr_index = data.map.get_index(data.pos.x, data.pos.y);
 
         loop {
-            match state.status {
+            match data.state.status {
                 Behavior::Sleep => {
                     // the do nothing state
                     // TODO: trigger wake up
                     return NextIntent::None;
                 }
                 Behavior::Wander => {
-                    if can_see_target(viewshed, player_point) {
-                        state.status = Behavior::Chase {
-                            target_point: player_point,
+                    if Self::can_see_target(data.viewshed, data.player_point) {
+                        data.state.status = Behavior::Chase {
+                            target_point: data.player_point,
                         };
                     } else {
                         // pick a random tile we can move to
-                        let exits = map.get_available_exits_for(curr_index, ent, multi);
+                        let exits = data
+                            .map
+                            .get_available_exits_for(curr_index, data.ent, data.multi);
                         if exits.len() > 0 {
-                            let exit_index = rng.range(0, exits.len());
+                            let exit_index = data.rng.range(0, exits.len());
                             let chosen_exit = exits[exit_index].0;
                             return NextIntent::Move {
                                 intent: MoveIntent {
-                                    loc: map.index_to_point2d(chosen_exit),
+                                    loc: data.map.index_to_point2d(chosen_exit),
                                 },
                             };
                         } else {
@@ -164,23 +167,23 @@ impl AiSystem {
                     }
                 }
                 Behavior::Chase { target_point } => {
-                    if can_see_target(viewshed, player_point) {
+                    if Self::can_see_target(data.viewshed, data.player_point) {
                         // track the player's current position
-                        state.status = Behavior::Chase {
-                            target_point: player_point,
+                        data.state.status = Behavior::Chase {
+                            target_point: data.player_point,
                         };
 
                         // check if we have any attacks that can hit
-                        let orig_point = pos.as_point();
+                        let orig_point = data.pos.as_point();
 
-                        let rolled_prob: f32 = rng.rand();
+                        let rolled_prob: f32 = data.rng.rand();
                         let mut cumul_prob: f32 = 0.0;
                         let mut attack_found = false;
 
                         // TODO: smarter attack selection
                         // this is fine when all of the attacks have similar attack ranges
                         // however, we might run into cases where we are in range to attack, but we decided to use an attack thats not valid
-                        for (potential_attack, chance) in moveset.moves.iter() {
+                        for (potential_attack, chance) in data.moveset.moves.iter() {
                             cumul_prob += chance;
                             if rolled_prob > cumul_prob {
                                 continue;
@@ -189,9 +192,9 @@ impl AiSystem {
                             if let Some(attack_loc) = crate::attack_type::is_attack_valid(
                                 *potential_attack,
                                 orig_point,
-                                player_point,
+                                data.player_point,
                             ) {
-                                state.status = Behavior::AttackStartup {
+                                data.state.status = Behavior::AttackStartup {
                                     turns_left: crate::attack_type::get_startup(*potential_attack),
                                     info: AttackInfo {
                                         attack_type: *potential_attack,
@@ -205,48 +208,23 @@ impl AiSystem {
 
                         if !attack_found {
                             // if we can't hit, just move towards the player
-                            let player_index = map.point2d_to_index(player_point);
-                            let movement = move_towards(ent, map, curr_index, player_index, multi);
-
-                            match movement {
-                                None => {
-                                    // we can't move towards the player for some reason, so give up chasing
-                                    state.status = Behavior::Wander;
-                                    return NextIntent::None;
-                                }
-                                Some(movement) => {
-                                    return NextIntent::Move { intent: movement };
-                                }
-                            }
+                            return self.move_towards(data.player_point, data);
                         }
                     } else {
                         // we don't see the player, move to the last tracked point
-                        let target_index = map.point2d_to_index(target_point);
-                        let movement = move_towards(ent, map, curr_index, target_index, multi);
-
-                        match movement {
-                            None => {
-                                // most likely reason we got here is because we reached the target point
-                                // if we didn't see the player on the way, return to wandering
-                                state.status = Behavior::Wander;
-                                return NextIntent::None;
-                            }
-                            Some(movement) => {
-                                return NextIntent::Move { intent: movement };
-                            }
-                        }
+                        return self.move_towards(target_point, data);
                     }
                 }
                 Behavior::AttackStartup { turns_left, info } => {
                     if turns_left > 0 {
-                        state.status = Behavior::AttackStartup {
+                        data.state.status = Behavior::AttackStartup {
                             turns_left: turns_left - 1,
                             info,
                         };
 
                         return crate::get_startup_action(info.attack_type, turns_left as usize);
                     } else {
-                        state.status = Behavior::Attack { info };
+                        data.state.status = Behavior::Attack { info };
                     }
                 }
                 Behavior::Attack { info } => {
@@ -256,7 +234,7 @@ impl AiSystem {
                         None,
                     );
 
-                    state.status = Behavior::AttackRecovery {
+                    data.state.status = Behavior::AttackRecovery {
                         turns_left: crate::attack_type::get_recovery(info.attack_type),
                         info,
                     };
@@ -265,19 +243,19 @@ impl AiSystem {
                 }
                 Behavior::AttackRecovery { turns_left, info } => {
                     if turns_left > 0 {
-                        state.status = Behavior::AttackRecovery {
+                        data.state.status = Behavior::AttackRecovery {
                             turns_left: turns_left - 1,
                             info,
                         };
 
                         return crate::get_recovery_action(info.attack_type, turns_left as usize);
                     } else {
-                        if can_see_target(viewshed, player_point) {
-                            state.status = Behavior::Chase {
-                                target_point: player_point,
+                        if Self::can_see_target(data.viewshed, data.player_point) {
+                            data.state.status = Behavior::Chase {
+                                target_point: data.player_point,
                             };
                         } else {
-                            state.status = Behavior::Wander;
+                            data.state.status = Behavior::Wander;
                         }
                     }
                 }
@@ -288,30 +266,68 @@ impl AiSystem {
             }
         }
     }
-}
 
-fn can_see_target(viewshed: &crate::Viewshed, target: rltk::Point) -> bool {
-    viewshed
-        .visible
-        .iter()
-        .any(|pos| pos.x == target.x && pos.y == target.y)
-}
+    fn move_towards(&self, target_point: rltk::Point, data: AiStepData) -> NextIntent {
+        let target_index = data.map.point2d_to_index(target_point);
+        let path = Self::get_path_to(
+            data.ent,
+            data.map,
+            data.map.get_index(data.pos.x, data.pos.y),
+            target_index,
+            data.multi,
+        );
 
-fn move_towards(
-    entity: Entity,
-    map: &mut Map,
-    curr_index: usize,
-    target_index: usize,
-    multi_component: Option<&crate::MultiTile>,
-) -> Option<MoveIntent> {
-    map.set_additional_args(entity, multi_component);
-    let path = rltk::a_star_search(curr_index, target_index, &*map);
+        match path {
+            None => {
+                if let Some(path) = &data.state.prev_path {
+                    if data.state.path_step < path.steps.len() {
+                        let next_pos = data.map.index_to_point2d(path.steps[data.state.path_step]);
+                        data.state.path_step += 1;
 
-    if path.success && path.steps.len() > 1 {
-        let next_pos = map.index_to_point2d(path.steps[1]);
-        return Some(MoveIntent { loc: next_pos });
-    } else {
-        println!("No path exists!");
-        return None;
+                        return NextIntent::Move {
+                            intent: MoveIntent { loc: next_pos },
+                        };
+                    }
+                }
+
+                // TODO: can't get to the target
+                data.state.status = Behavior::Wander;
+                return NextIntent::None;
+            }
+            Some(path) => {
+                let next_pos = data.map.index_to_point2d(path.steps[1]);
+                data.state.prev_path = Some(path);
+                data.state.path_step = 2;
+
+                return NextIntent::Move {
+                    intent: MoveIntent { loc: next_pos },
+                };
+            }
+        }
+    }
+
+    fn can_see_target(viewshed: &crate::Viewshed, target: rltk::Point) -> bool {
+        viewshed
+            .visible
+            .iter()
+            .any(|pos| pos.x == target.x && pos.y == target.y)
+    }
+
+    fn get_path_to(
+        entity: Entity,
+        map: &mut Map,
+        curr_index: usize,
+        target_index: usize,
+        multi_component: Option<&crate::MultiTile>,
+    ) -> Option<rltk::NavigationPath> {
+        map.set_additional_args(entity, multi_component);
+        let path = rltk::a_star_search(curr_index, target_index, &*map);
+
+        if path.success && path.steps.len() > 1 {
+            return Some(path);
+        } else {
+            println!("No path exists!");
+            return None;
+        }
     }
 }

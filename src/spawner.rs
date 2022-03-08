@@ -150,6 +150,8 @@ pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
         .with(BlocksTile)
         .with(AiState {
             status: Behavior::Wander,
+            prev_path: None,
+            path_step: 0,
         })
 }
 

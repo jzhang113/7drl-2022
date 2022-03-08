@@ -104,6 +104,8 @@ pub struct BlockAttack {
 #[derive(Component)]
 pub struct AiState {
     pub status: crate::Behavior,
+    pub prev_path: Option<rltk::NavigationPath>,
+    pub path_step: usize,
 }
 
 #[derive(Component)]
