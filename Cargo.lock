@@ -961,6 +961,7 @@ dependencies = [
 name = "mhrl"
 version = "0.1.0"
 dependencies = [
+ "derivative",
  "ezing",
  "getrandom",
  "lazy_static",

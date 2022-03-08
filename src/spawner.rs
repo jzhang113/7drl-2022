@@ -1,5 +1,6 @@
 use crate::*;
 use rltk::{Point, RandomNumberGenerator, Rect};
+use std::collections::HashMap;
 
 pub struct Spawner<'a> {
     ecs: &'a mut World,
@@ -153,22 +154,22 @@ pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
 }
 
 pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
-    let mut part_hash = std::collections::HashMap::new();
-    part_hash.insert(rltk::Point::new(1, 1), rltk::to_cp437('!'));
-    part_hash.insert(rltk::Point::new(1, 2), rltk::to_cp437('!'));
-
-    let mut part_hash_2 = std::collections::HashMap::new();
-    part_hash_2.insert(rltk::Point::new(-1, 1), rltk::to_cp437('!'));
-    part_hash_2.insert(rltk::Point::new(-1, 2), rltk::to_cp437('!'));
-
     let part_list = vec![
         MonsterPart {
-            symbol_map: part_hash,
+            symbol_map: HashMap::from([
+                (rltk::Point::new(-1, 0), rltk::to_cp437('│')),
+                (rltk::Point::new(-1, 1), rltk::to_cp437('└')),
+                (rltk::Point::new(0, 1), rltk::to_cp437('─')),
+            ]),
             health: 1,
             max_health: 1,
         },
         MonsterPart {
-            symbol_map: part_hash_2,
+            symbol_map: HashMap::from([
+                (rltk::Point::new(0, -1), rltk::to_cp437('─')),
+                (rltk::Point::new(1, -1), rltk::to_cp437('┐')),
+                (rltk::Point::new(1, 0), rltk::to_cp437('│')),
+            ]),
             health: 1,
             max_health: 1,
         },

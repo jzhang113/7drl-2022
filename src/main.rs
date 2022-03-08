@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate lazy_static;
 
 rltk::embedded_resource!(FONT, "../resources/Zilk-16x16.png");
@@ -23,6 +24,7 @@ mod sys_mapindex;
 mod sys_movement;
 mod sys_partbreak;
 mod sys_particle;
+mod sys_partmove;
 mod sys_pickup;
 mod sys_turn;
 mod sys_visibility;
@@ -33,7 +35,7 @@ pub use components::*;
 pub use map::{Map, TileType};
 pub use monster_part::*;
 pub use range_type::*;
-pub use sys_ai::Behavior;
+pub use sys_ai::{Behavior, NextIntent};
 pub use sys_particle::{ParticleBuilder, ParticleRequest};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -81,6 +83,7 @@ impl State {
         self.ecs.register::<Health>();
         self.ecs.register::<AttackIntent>();
         self.ecs.register::<MoveIntent>();
+        self.ecs.register::<PartMoveIntent>();
         self.ecs.register::<Moveset>();
 
         self.ecs.register::<AttackInProgress>();
@@ -125,6 +128,7 @@ impl State {
 
         sys_movement::MovementSystem.run_now(&self.ecs);
         sys_attack::AttackSystem.run_now(&self.ecs);
+        sys_partmove::PartMoveSystem.run_now(&self.ecs);
         sys_partbreak::PartBreakSystem.run_now(&self.ecs);
 
         // pickups happen after movement

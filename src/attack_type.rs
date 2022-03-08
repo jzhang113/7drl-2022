@@ -1,7 +1,15 @@
 use crate::{AttackIntent, RangeType};
+use derivative::Derivative;
 use rltk::Point;
+use std::collections::HashMap;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+lazy_static! {
+    static ref STARTUP_ACTIONS: HashMap<AttackType, Vec<crate::NextIntent>> = startup_actions();
+    static ref RECOVERY_ACTIONS: HashMap<AttackType, Vec<crate::NextIntent>> = recovery_actions();
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Derivative)]
+#[derivative(Hash)]
 pub enum AttackType {
     Sweep,
     Punch,
@@ -110,6 +118,65 @@ pub fn get_attack_delay(attack_type: AttackType) -> i32 {
         AttackType::Haymaker => -4,
         AttackType::Ranged => 0,
     }
+}
+
+pub fn get_startup(attack_type: AttackType) -> i32 {
+    match attack_type {
+        AttackType::Sweep => 1,
+        _ => 0,
+    }
+}
+
+pub fn get_recovery(attack_type: AttackType) -> i32 {
+    match attack_type {
+        AttackType::Sweep => 1,
+        AttackType::Ranged => 1,
+        _ => 0,
+    }
+}
+
+pub fn get_startup_action(attack_type: AttackType, index: usize) -> crate::NextIntent {
+    match STARTUP_ACTIONS.get(&attack_type) {
+        Some(action_list) => action_list[index % action_list.len()].clone(),
+        None => crate::NextIntent::None,
+    }
+}
+
+pub fn get_recovery_action(attack_type: AttackType, index: usize) -> crate::NextIntent {
+    match RECOVERY_ACTIONS.get(&attack_type) {
+        Some(action_list) => action_list[index % action_list.len()].clone(),
+        None => crate::NextIntent::None,
+    }
+}
+
+fn startup_actions() -> HashMap<AttackType, Vec<crate::NextIntent>> {
+    let mut action_map = HashMap::new();
+
+    action_map.insert(
+        AttackType::Sweep,
+        vec![crate::NextIntent::PartMove {
+            intent: crate::PartMoveIntent {
+                part_delta: vec![rltk::Point::new(-1, 1), rltk::Point::new(1, -1)],
+            },
+        }],
+    );
+
+    action_map
+}
+
+fn recovery_actions() -> HashMap<AttackType, Vec<crate::NextIntent>> {
+    let mut action_map = HashMap::new();
+
+    action_map.insert(
+        AttackType::Sweep,
+        vec![crate::NextIntent::PartMove {
+            intent: crate::PartMoveIntent {
+                part_delta: vec![rltk::Point::new(1, -1), rltk::Point::new(-1, 1)],
+            },
+        }],
+    );
+
+    action_map
 }
 
 pub fn get_attack_name(attack_type: AttackType) -> String {

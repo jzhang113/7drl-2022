@@ -5,20 +5,25 @@ use specs::prelude::*;
 pub enum Behavior {
     Sleep,
     Wander,
-    Chase {
-        target_point: rltk::Point,
-    },
-    Attack {
-        attack: crate::AttackType,
-        attack_loc: rltk::Point,
-    },
+    Chase { target_point: rltk::Point },
+    Attack { info: AttackInfo },
+    AttackStartup { turns_left: i32, info: AttackInfo },
+    AttackRecovery { turns_left: i32, info: AttackInfo },
     Flee,
 }
 
-enum NextIntent {
+#[derive(Clone)]
+pub enum NextIntent {
     None,
     Attack { intent: crate::AttackIntent },
     Move { intent: crate::MoveIntent },
+    PartMove { intent: crate::PartMoveIntent },
+}
+
+#[derive(Copy, Clone)]
+pub struct AttackInfo {
+    attack_type: crate::AttackType,
+    attack_loc: rltk::Point,
 }
 
 pub struct AiSystem;
@@ -30,6 +35,7 @@ impl<'a> System<'a> for AiSystem {
         ReadStorage<'a, crate::Position>,
         WriteStorage<'a, crate::MoveIntent>,
         WriteStorage<'a, crate::AttackIntent>,
+        WriteStorage<'a, crate::PartMoveIntent>,
         WriteStorage<'a, crate::AiState>,
         ReadStorage<'a, crate::Viewshed>,
         ReadStorage<'a, crate::Moveset>,
@@ -47,6 +53,7 @@ impl<'a> System<'a> for AiSystem {
             positions,
             mut moves,
             mut attacks,
+            mut part_moves,
             mut states,
             viewsheds,
             movesets,
@@ -94,6 +101,11 @@ impl<'a> System<'a> for AiSystem {
                         .insert(ent, intent)
                         .expect("Failed to insert movement from AI");
                 }
+                NextIntent::PartMove { intent } => {
+                    part_moves
+                        .insert(ent, intent)
+                        .expect("Failed to insert part movement from AI");
+                }
                 NextIntent::None => {}
             }
 
@@ -117,7 +129,7 @@ impl AiSystem {
         multi: Option<&crate::MultiTile>,
         player_point: rltk::Point,
         map: &mut crate::Map,
-        _p_builder: &mut crate::ParticleBuilder,
+        p_builder: &mut crate::ParticleBuilder,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> NextIntent {
         let curr_index = map.get_index(pos.x, pos.y);
@@ -179,9 +191,12 @@ impl AiSystem {
                                 orig_point,
                                 player_point,
                             ) {
-                                state.status = Behavior::Attack {
-                                    attack: *potential_attack,
-                                    attack_loc: attack_loc,
+                                state.status = Behavior::AttackStartup {
+                                    turns_left: crate::attack_type::get_startup(*potential_attack),
+                                    info: AttackInfo {
+                                        attack_type: *potential_attack,
+                                        attack_loc: attack_loc,
+                                    },
                                 };
                                 attack_found = true;
                                 break;
@@ -222,18 +237,49 @@ impl AiSystem {
                         }
                     }
                 }
-                Behavior::Attack { attack, attack_loc } => {
-                    let intent = crate::attack_type::get_attack_intent(attack, attack_loc, None);
-
-                    if can_see_target(viewshed, player_point) {
-                        state.status = Behavior::Chase {
-                            target_point: player_point,
+                Behavior::AttackStartup { turns_left, info } => {
+                    if turns_left > 0 {
+                        state.status = Behavior::AttackStartup {
+                            turns_left: turns_left - 1,
+                            info,
                         };
+
+                        return crate::get_startup_action(info.attack_type, turns_left as usize);
                     } else {
-                        state.status = Behavior::Wander;
+                        state.status = Behavior::Attack { info };
                     }
+                }
+                Behavior::Attack { info } => {
+                    let intent = crate::attack_type::get_attack_intent(
+                        info.attack_type,
+                        info.attack_loc,
+                        None,
+                    );
+
+                    state.status = Behavior::AttackRecovery {
+                        turns_left: crate::attack_type::get_recovery(info.attack_type),
+                        info,
+                    };
 
                     return NextIntent::Attack { intent };
+                }
+                Behavior::AttackRecovery { turns_left, info } => {
+                    if turns_left > 0 {
+                        state.status = Behavior::AttackRecovery {
+                            turns_left: turns_left - 1,
+                            info,
+                        };
+
+                        return crate::get_recovery_action(info.attack_type, turns_left as usize);
+                    } else {
+                        if can_see_target(viewshed, player_point) {
+                            state.status = Behavior::Chase {
+                                target_point: player_point,
+                            };
+                        } else {
+                            state.status = Behavior::Wander;
+                        }
+                    }
                 }
                 Behavior::Flee => {
                     // TODO

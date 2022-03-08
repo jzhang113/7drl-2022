@@ -13,3 +13,4 @@ lazy_static = { version = "1.4.0" }
 ezing = { version = "0.2.1" }
 rand = { version = "0.8.0" }
 getrandom = { version = "0.2", features = ["js"] }
+derivative = { version = "2.2.0" }

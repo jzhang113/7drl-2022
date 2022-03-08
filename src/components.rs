@@ -71,7 +71,7 @@ pub struct AttackIntent {
     pub delay: i32,
 }
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone)]
 pub struct MoveIntent {
     pub loc: rltk::Point,
 }
@@ -134,4 +134,9 @@ pub struct MultiTile {
 #[derive(Component, Copy, Clone)]
 pub struct Facing {
     pub direction: Direction,
+}
+
+#[derive(Component, Clone)]
+pub struct PartMoveIntent {
+    pub part_delta: Vec<rltk::Point>,
 }
