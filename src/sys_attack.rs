@@ -1,6 +1,7 @@
 use crate::attack_type;
 use rltk::Algorithm2D;
 use specs::prelude::*;
+use std::collections::HashMap;
 
 pub struct AttackSystem;
 
@@ -8,15 +9,25 @@ impl<'a> System<'a> for AttackSystem {
     type SystemData = (
         Entities<'a>,
         ReadExpect<'a, crate::Map>,
+        ReadStorage<'a, crate::Position>,
         WriteStorage<'a, crate::AttackIntent>,
         WriteStorage<'a, crate::AttackInProgress>,
         WriteStorage<'a, crate::Health>,
+        WriteStorage<'a, crate::MultiTile>,
         WriteExpect<'a, crate::ParticleBuilder>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, map, mut attacks, mut attacks_in_progress, mut healths, mut p_builder) =
-            data;
+        let (
+            entities,
+            map,
+            positions,
+            mut attacks,
+            mut attacks_in_progress,
+            mut healths,
+            mut multis,
+            mut p_builder,
+        ) = data;
         let mut finished_attacks = Vec::new();
 
         for (ent, intent) in (&entities, &mut attacks).join() {
@@ -38,6 +49,7 @@ impl<'a> System<'a> for AttackSystem {
                     }
                     crate::AttackTrait::Damage { amount } => {
                         let targets = attack_type::each_attack_target(intent.main, intent.loc);
+                        let mut ents_hit = HashMap::new();
 
                         for point in targets {
                             let point_index = map.point2d_to_index(point);
@@ -47,10 +59,32 @@ impl<'a> System<'a> for AttackSystem {
                                     continue;
                                 }
 
-                                if let Some(mut aff_health) = healths.get_mut(*aff_ent) {
-                                    aff_health.current -= amount;
+                                let hit_locs = ents_hit.entry(aff_ent).or_insert(Vec::new());
+                                hit_locs.push(point);
+                            }
+                        }
 
-                                    p_builder.make_hit_particle(point);
+                        for (ent_hit, hit_locs) in ents_hit {
+                            if let Some(mut aff_health) = healths.get_mut(*ent_hit) {
+                                aff_health.current -= amount;
+
+                                if let Some(aff_part) = multis.get_mut(*ent_hit) {
+                                    if let Some(pos) = positions.get(*ent_hit) {
+                                        for part in aff_part.part_list.iter_mut() {
+                                            for part_pos in part.symbol_map.keys() {
+                                                let adj_part_pos = pos.as_point() + *part_pos;
+
+                                                if hit_locs.contains(&adj_part_pos) {
+                                                    part.health -= 1;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                for pos in hit_locs {
+                                    p_builder.make_hit_particle(pos);
                                 }
                             }
                         }

@@ -21,6 +21,7 @@ mod sys_attack;
 mod sys_death;
 mod sys_mapindex;
 mod sys_movement;
+mod sys_partbreak;
 mod sys_particle;
 mod sys_pickup;
 mod sys_turn;
@@ -124,6 +125,7 @@ impl State {
 
         sys_movement::MovementSystem.run_now(&self.ecs);
         sys_attack::AttackSystem.run_now(&self.ecs);
+        sys_partbreak::PartBreakSystem.run_now(&self.ecs);
 
         // pickups happen after movement
         sys_pickup::PickupSystem.run_now(&self.ecs);
