@@ -27,6 +27,7 @@ mod sys_partbreak;
 mod sys_particle;
 mod sys_partmove;
 mod sys_pickup;
+mod sys_push;
 mod sys_turn;
 mod sys_visibility;
 
@@ -97,6 +98,8 @@ impl State {
 
         self.ecs.register::<MultiTile>();
         self.ecs.register::<Facing>();
+
+        self.ecs.register::<PushForce>();
     }
 
     fn new_game(&mut self) {
@@ -130,14 +133,19 @@ impl State {
 
         sys_movement::MovementSystem.run_now(&self.ecs);
         sys_attack::AttackSystem.run_now(&self.ecs);
+
+        // ensure indexes are correct before handling part movements
+        sys_mapindex::MapIndexSystem.run_now(&self.ecs);
+
         sys_partmove::PartMoveSystem.run_now(&self.ecs);
         sys_partbreak::PartBreakSystem.run_now(&self.ecs);
 
+        // re-index because part movements may have changed blocked tiles
+        sys_mapindex::MapIndexSystem.run_now(&self.ecs);
+        sys_push::PushSystem.run_now(&self.ecs);
+
         // pickups happen after movement
         sys_pickup::PickupSystem.run_now(&self.ecs);
-
-        // index needs to run after movement so blocked tiles are updated
-        sys_mapindex::MapIndexSystem.run_now(&self.ecs);
 
         // death needs to run after attacks so bodies are cleaned up
         sys_death::DeathSystem.run_now(&self.ecs);

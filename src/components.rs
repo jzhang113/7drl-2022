@@ -135,3 +135,8 @@ pub struct Facing {
 pub struct PartMoveIntent {
     pub part_delta: Vec<rltk::Point>,
 }
+
+#[derive(Component, Debug)]
+pub struct PushForce {
+    pub delta: rltk::Point,
+}

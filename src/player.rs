@@ -138,6 +138,9 @@ fn handle_keys(
                     return try_move_player(&mut gs.ecs, 0, 1);
                 }
             }
+            VirtualKeyCode::Period => {
+                return RunState::Running;
+            }
             VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
             _ => RunState::AwaitingInput,
         },
