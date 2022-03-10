@@ -53,12 +53,12 @@ pub enum RunState {
     ViewEnemy {
         index: u32,
     },
-    ViewCard,
     Running,
     HitPause {
         remaining_time: f32,
     },
     GenerateMap,
+    Overworld,
     Dead,
 }
 
@@ -234,7 +234,7 @@ impl GameState for State {
         sys_particle::cleanup_particles(&mut self.ecs, ctx);
 
         // draw map + gui
-        gui::draw_all(&self.ecs, ctx);
+        gui::map::draw_all(&self.ecs, ctx);
 
         let mut next_status;
         let player_point;
@@ -254,7 +254,7 @@ impl GameState for State {
 
         match next_status {
             RunState::AwaitingInput => {
-                gui::update_controls_text(&self.ecs, ctx, &next_status);
+                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 next_status = player::player_input(self, ctx);
 
                 if next_status == RunState::Running {
@@ -265,7 +265,7 @@ impl GameState for State {
                 attack_type,
                 ignore_targetting,
             } => {
-                gui::update_controls_text(&self.ecs, ctx, &next_status);
+                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 let range_type = crate::attack_type::get_attack_range(attack_type);
                 let tiles_in_range = crate::range_type::resolve_range_at(&range_type, player_point);
 
@@ -301,12 +301,8 @@ impl GameState for State {
                 }
             }
             RunState::ViewEnemy { index } => {
-                gui::update_controls_text(&self.ecs, ctx, &next_status);
+                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 next_status = player::view_input(self, ctx, index);
-            }
-            RunState::ViewCard => {
-                gui::update_controls_text(&self.ecs, ctx, &next_status);
-                next_status = player::view_input(self, ctx, 0);
             }
             RunState::Running => {
                 // uncomment while loop to skip rendering intermediate states
@@ -323,7 +319,7 @@ impl GameState for State {
             }
             RunState::HitPause { remaining_time } => {
                 {
-                    gui::update_controls_text(&self.ecs, ctx, &next_status);
+                    gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 }
 
                 sys_particle::ParticleSpawnSystem.run_now(&self.ecs);
@@ -344,12 +340,24 @@ impl GameState for State {
                 next_status = RunState::AwaitingInput;
             }
             RunState::Dead => {
-                gui::update_controls_text(&self.ecs, ctx, &next_status);
+                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
 
                 match ctx.key {
                     None => {}
                     Some(key) => {
                         if key == rltk::VirtualKeyCode::R {
+                            next_status = RunState::Overworld;
+                        }
+                    }
+                }
+            }
+            RunState::Overworld => {
+                gui::overworld::screen(&self.ecs, ctx);
+
+                match ctx.key {
+                    None => {}
+                    Some(key) => {
+                        if key == rltk::VirtualKeyCode::B {
                             let new_world = World::new();
                             self.ecs = new_world;
                             self.new_game();
@@ -370,14 +378,26 @@ fn main() -> rltk::BError {
     rltk::link_resource!(FONT, "resources/Zilk-16x16.png");
     rltk::link_resource!(ICONS, "resources/custom_icons.png");
 
-    let context = RltkBuilder::simple(gui::CONSOLE_WIDTH, gui::CONSOLE_HEIGHT)?
+    let context = RltkBuilder::simple(gui::consts::CONSOLE_WIDTH, gui::consts::CONSOLE_HEIGHT)?
         .with_title("counterpuncher")
         .with_font("Zilk-16x16.png", 16, 16)
         .with_font("custom_icons.png", 16, 16)
         .with_tile_dimensions(16, 16)
-        .with_simple_console_no_bg(gui::CONSOLE_WIDTH, gui::CONSOLE_HEIGHT, "Zilk-16x16.png") // main layer
-        .with_sparse_console_no_bg(gui::CONSOLE_WIDTH, gui::CONSOLE_HEIGHT, "custom_icons.png") // custom icons
-        .with_sparse_console(gui::CONSOLE_WIDTH, gui::CONSOLE_HEIGHT, "Zilk-16x16.png") // control line
+        .with_simple_console_no_bg(
+            gui::consts::CONSOLE_WIDTH,
+            gui::consts::CONSOLE_HEIGHT,
+            "Zilk-16x16.png",
+        ) // main layer
+        .with_sparse_console_no_bg(
+            gui::consts::CONSOLE_WIDTH,
+            gui::consts::CONSOLE_HEIGHT,
+            "custom_icons.png",
+        ) // custom icons
+        .with_sparse_console(
+            gui::consts::CONSOLE_WIDTH,
+            gui::consts::CONSOLE_HEIGHT,
+            "Zilk-16x16.png",
+        ) // control line
         .build()
         .expect("Failed to build console");
 

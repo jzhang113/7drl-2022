@@ -121,7 +121,7 @@ pub fn build_player(ecs: &mut World, point: Point) -> Entity {
         .with(Viewshed {
             visible: Vec::new(),
             dirty: true,
-            range: 8,
+            range: 20,
         })
         .with(CanReactFlag)
         //.with(BlocksTile)
@@ -145,7 +145,7 @@ pub fn build_enemy_base(ecs: &mut World) -> EntityBuilder {
         .with(Viewshed {
             visible: Vec::new(),
             dirty: true,
-            range: 8,
+            range: 10,
         })
         .with(BlocksTile)
         .with(AiState {

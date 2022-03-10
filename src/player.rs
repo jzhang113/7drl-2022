@@ -166,8 +166,8 @@ pub fn ranged_target(
 
     if ignore_targetting {
         ctx.print_color(
-            crate::gui::MAP_SCREEN_X,
-            crate::gui::MAP_SCREEN_Y - 1,
+            gui::consts::MAP_SCREEN_X,
+            gui::consts::MAP_SCREEN_Y - 1,
             crate::header_message_color(),
             crate::bg_color(),
             "Confirm use",
@@ -182,8 +182,8 @@ pub fn ranged_target(
             for idx in viewshed.visible.iter() {
                 if tiles_in_range.contains(idx) {
                     ctx.set_bg(
-                        crate::gui::MAP_SCREEN_X + idx.x,
-                        crate::gui::MAP_SCREEN_Y + idx.y,
+                        gui::consts::MAP_SCREEN_X + idx.x,
+                        gui::consts::MAP_SCREEN_Y + idx.y,
                         crate::tiles_in_range_color(),
                     );
                     available_cells.push(idx);
@@ -203,24 +203,24 @@ pub fn ranged_target(
             cursor_color = crate::invalid_cursor_color();
         }
         ctx.set_bg(
-            crate::gui::MAP_SCREEN_X + gs.cursor.x,
-            crate::gui::MAP_SCREEN_Y + gs.cursor.y,
+            gui::consts::MAP_SCREEN_X + gs.cursor.x,
+            gui::consts::MAP_SCREEN_Y + gs.cursor.y,
             cursor_color,
         );
         ctx.set_active_console(1);
 
         if valid_target {
             ctx.print_color(
-                crate::gui::MAP_SCREEN_X,
-                crate::gui::MAP_SCREEN_Y - 1,
+                crate::gui::consts::MAP_SCREEN_X,
+                crate::gui::consts::MAP_SCREEN_Y - 1,
                 crate::header_message_color(),
                 crate::bg_color(),
                 "Select Target",
             );
         } else {
             ctx.print_color(
-                crate::gui::MAP_SCREEN_X,
-                crate::gui::MAP_SCREEN_Y - 1,
+                gui::consts::MAP_SCREEN_X,
+                gui::consts::MAP_SCREEN_Y - 1,
                 crate::header_err_color(),
                 crate::bg_color(),
                 "Invalid Target",
@@ -286,7 +286,7 @@ pub fn view_input(gs: &mut State, ctx: &mut Rltk, index: u32) -> RunState {
             max_index = std::cmp::max(list_index, max_index);
 
             if list_index == index {
-                crate::gui::draw_viewable_info(&gs.ecs, ctx, &ent, index);
+                gui::map::draw_viewable_info(&gs.ecs, ctx, &ent, index);
             }
         }
     }

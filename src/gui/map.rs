@@ -1,21 +1,6 @@
-use super::*;
+use super::consts::*;
+use crate::*;
 use rltk::{Algorithm2D, Rltk, RGB};
-
-// #region UI constants
-pub const MAP_SCREEN_X: i32 = SIDE_W + 1;
-pub const MAP_SCREEN_Y: i32 = 1;
-
-const SIDE_X: i32 = 0;
-const SIDE_Y: i32 = 0;
-const SIDE_W: i32 = 16;
-const SIDE_H: i32 = 50;
-
-pub const CONSOLE_WIDTH: i32 = camera::VIEW_W + SIDE_W + 2;
-pub const CONSOLE_HEIGHT: i32 = camera::VIEW_H + 15 + 2;
-
-const SHOW_MAP: bool = false;
-const SHOW_REND: bool = false;
-// #endregion
 
 pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
     // map elements
@@ -25,7 +10,7 @@ pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
     draw_attacks_in_progress(ecs, ctx);
 
     // non-map elements
-    draw_sidebar(ecs, ctx);
+    super::sidebar::draw_sidebar(ecs, ctx);
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
@@ -240,116 +225,6 @@ fn highlight_bg(ctx: &mut Rltk, camera_pos: &rltk::Point, pos: &rltk::Point, col
     ctx.set_active_console(1);
 }
 
-pub fn draw_sidebar(ecs: &World, ctx: &mut Rltk) {
-    let healths = ecs.read_storage::<Health>();
-    let rends = ecs.read_storage::<Renderable>();
-    let mut viewables = ecs.write_storage::<ViewableIndex>();
-    let viewsheds = ecs.read_storage::<Viewshed>();
-    let positions = ecs.read_storage::<Position>();
-    let in_progress = ecs.read_storage::<AttackInProgress>();
-
-    let player = ecs.fetch::<Entity>();
-    let player_view = viewsheds
-        .get(*player)
-        .expect("Player didn't have a viewshed");
-
-    ctx.draw_box(
-        SIDE_X,
-        SIDE_Y,
-        SIDE_W,
-        SIDE_H + 1,
-        RGB::named(rltk::WHITE),
-        RGB::named(rltk::BLACK),
-    );
-
-    let x = SIDE_X + 1;
-    let mut y = SIDE_Y + 1;
-    let mut index = 0;
-
-    for (rend, mut view, pos, health, attack) in (
-        &rends,
-        &mut viewables,
-        &positions,
-        &healths,
-        (&in_progress).maybe(),
-    )
-        .join()
-    {
-        if !player_view
-            .visible
-            .iter()
-            .any(|view_pos| view_pos.x == pos.x && view_pos.y == pos.y)
-        {
-            continue;
-        }
-
-        view.list_index = Some(index);
-
-        if index <= 5 {
-            // change symbol color if attacking
-            let symbol_color;
-            if attack.is_some() {
-                symbol_color = attack_highlight_color();
-            } else {
-                symbol_color = RGB::named(rltk::WHITE);
-            }
-
-            ctx.set(x, y, symbol_color, RGB::named(rltk::BLACK), rend.symbol);
-            ctx.set(
-                x + 1,
-                y,
-                RGB::named(rltk::WHITE),
-                RGB::named(rltk::BLACK),
-                rltk::to_cp437(':'),
-            );
-
-            let curr_hp = std::cmp::max(0, health.current);
-
-            for i in 0..curr_hp {
-                ctx.set(
-                    x + i + 2,
-                    y,
-                    hp_main_color(),
-                    bg_color(),
-                    rltk::to_cp437('o'),
-                );
-            }
-
-            for i in curr_hp..health.max {
-                ctx.set(
-                    x + i + 2,
-                    y,
-                    hp_alt_color(),
-                    bg_color(),
-                    rltk::to_cp437('o'),
-                );
-            }
-        }
-
-        y += 2;
-        index += 1;
-
-        // TODO: what to do with excess?
-    }
-
-    ctx.draw_box(
-        0,
-        50,
-        79,
-        6,
-        RGB::named(rltk::WHITE),
-        RGB::named(rltk::BLACK),
-    );
-
-    let log = ecs.fetch::<super::gamelog::GameLog>();
-    for (line, message) in log.entries.iter().rev().take(5).enumerate() {
-        ctx.print(2, 50 + line + 1, message);
-    }
-
-    ctx.print(74, 1, format!("{} fps", ctx.fps));
-    _draw_tooltips(ecs, ctx);
-}
-
 pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
     ctx.set_active_console(3);
 
@@ -366,7 +241,7 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
     let inactive_color = text_inactive_color();
 
     let is_reaction = {
-        let can_act = ecs.read_storage::<super::CanActFlag>();
+        let can_act = ecs.read_storage::<CanActFlag>();
         let player = ecs.fetch::<Entity>();
         match can_act.get(*player) {
             None => false,
@@ -574,47 +449,5 @@ fn position_box(ctx: &mut Rltk, x: i32, y: i32, w: i32, h: i32, fg: RGB, bg: RGB
             ctx.set(x - 1, y, fg, bg, rltk::to_cp437('┴'));
             return (x - w - 1, y - h);
         }
-    }
-}
-
-// TODO
-fn _draw_tooltips(ecs: &World, ctx: &mut Rltk) {
-    let map = ecs.fetch::<Map>();
-    let renderables = ecs.read_storage::<Renderable>();
-    let viewables = ecs.read_storage::<Viewable>();
-    let positions = ecs.read_storage::<Position>();
-
-    let mouse_point = ctx.mouse_point();
-    let adjusted_point = mouse_point - rltk::Point::new(SIDE_W + 1, 1);
-
-    let mut tooltip: Vec<String> = Vec::new();
-
-    for (_rend, view, pos) in (&renderables, &viewables, &positions).join() {
-        if pos.as_point() == adjusted_point {
-            tooltip.push(view.name.to_string());
-        }
-    }
-
-    if map.in_bounds(adjusted_point) {
-        let ent = map
-            .creature_map
-            .get(&map.get_index(adjusted_point.x, adjusted_point.y));
-
-        if let Some(ent) = ent {
-            let vv = viewables.get(*ent).unwrap();
-
-            tooltip.push(vv.name.to_string());
-        }
-    }
-
-    if !tooltip.is_empty() {
-        // placeholder
-        ctx.print_color(
-            1,
-            1,
-            RGB::named(rltk::WHITE),
-            RGB::named(rltk::GREY),
-            tooltip.concat(),
-        );
     }
 }
