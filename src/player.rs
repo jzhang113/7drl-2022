@@ -9,6 +9,7 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     let mut attacks = ecs.write_storage::<AttackIntent>();
     let mut healths = ecs.write_storage::<Health>();
     let openables = ecs.read_storage::<Openable>();
+    let npcs = ecs.read_storage::<Npc>();
     let map = ecs.fetch::<Map>();
     let player = ecs.fetch::<Entity>();
 
@@ -39,6 +40,12 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
                     }
 
                     return RunState::Running;
+                } else if let Some(npc) = npcs.get(*dest_ent) {
+                    match npc.npc_type {
+                        NpcType::Blacksmith => return RunState::Shop,
+                        NpcType::Handler => return RunState::MissionSelect { index: 0 },
+                        NpcType::Shopkeeper => return RunState::Shop,
+                    }
                 } else {
                     let attack = crate::attack_type::get_attack_intent(
                         AttackType::Punch,

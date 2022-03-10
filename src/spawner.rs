@@ -60,11 +60,15 @@ pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
 
         // track the entity if we built one
         if let Some(entity) = entity {
-            let mut map = ecs.fetch_mut::<Map>();
-            let multis = ecs.read_storage::<MultiTile>();
-            map.track_creature(entity, *map_idx, multis.get(entity));
+            track_entity(ecs, entity, *map_idx);
         }
     }
+}
+
+pub fn track_entity(ecs: &mut World, entity: Entity, map_idx: usize) {
+    let mut map = ecs.fetch_mut::<Map>();
+    let multis = ecs.read_storage::<MultiTile>();
+    map.track_creature(entity, map_idx, multis.get(entity));
 }
 
 fn roll(chance: &Vec<(String, f32)>, rng: &mut rltk::RandomNumberGenerator) -> String {
@@ -317,6 +321,9 @@ pub fn build_npc_blacksmith(ecs: &mut World, point: Point) -> Entity {
             description: vec!["That's you!".to_string()],
             seen: false,
         })
+        .with(Npc {
+            npc_type: NpcType::Blacksmith,
+        })
         .build()
 }
 
@@ -332,6 +339,9 @@ pub fn build_npc_shopkeeper(ecs: &mut World, point: Point) -> Entity {
             description: vec!["That's you!".to_string()],
             seen: false,
         })
+        .with(Npc {
+            npc_type: NpcType::Shopkeeper,
+        })
         .build()
 }
 
@@ -346,6 +356,9 @@ pub fn build_npc_handler(ecs: &mut World, point: Point) -> Entity {
             name: "Handler".to_string(),
             description: vec!["That's you!".to_string()],
             seen: false,
+        })
+        .with(Npc {
+            npc_type: NpcType::Handler,
         })
         .build()
 }

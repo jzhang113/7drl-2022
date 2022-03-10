@@ -140,3 +140,15 @@ pub struct PartMoveIntent {
 pub struct PushForce {
     pub delta: rltk::Point,
 }
+
+#[derive(Debug)]
+pub enum NpcType {
+    Blacksmith,
+    Shopkeeper,
+    Handler,
+}
+
+#[derive(Component, Debug)]
+pub struct Npc {
+    pub npc_type: NpcType,
+}

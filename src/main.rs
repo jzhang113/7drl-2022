@@ -60,7 +60,10 @@ pub enum RunState {
         remaining_time: f32,
     },
     GenerateMap,
-    Overworld,
+    MissionSelect {
+        index: usize,
+    },
+    Shop,
     Dead,
 }
 
@@ -104,6 +107,7 @@ impl State {
         self.ecs.register::<Facing>();
 
         self.ecs.register::<PushForce>();
+        self.ecs.register::<Npc>();
     }
 
     fn new_game(&mut self) {
@@ -268,9 +272,11 @@ impl GameState for State {
         }
 
         // draw map + gui
-        if next_status != RunState::Overworld {
-            gui::map::draw_all(&self.ecs, ctx);
-        }
+        match next_status {
+            RunState::MissionSelect { .. } => {}
+            RunState::Shop => {}
+            _ => gui::map::draw_all(&self.ecs, ctx),
+        };
 
         match next_status {
             RunState::AwaitingInput => {
@@ -366,26 +372,42 @@ impl GameState for State {
                     None => {}
                     Some(key) => {
                         if key == rltk::VirtualKeyCode::R {
-                            next_status = RunState::Overworld;
-                        }
-                    }
-                }
-            }
-            RunState::Overworld => {
-                gui::overworld::screen(&self.ecs, ctx);
-
-                match ctx.key {
-                    None => {}
-                    Some(key) => {
-                        if key == rltk::VirtualKeyCode::B {
-                            let new_world = World::new();
-                            self.ecs = new_world;
-                            self.new_game();
                             next_status = RunState::Running;
                         }
                     }
                 }
             }
+            RunState::MissionSelect { index } => {
+                gui::overworld::draw_missions(&self.ecs, ctx, index);
+
+                match ctx.key {
+                    None => {}
+                    Some(key) => {
+                        if key == rltk::VirtualKeyCode::Escape {
+                            next_status = RunState::Running;
+                        } else if key == rltk::VirtualKeyCode::B {
+                            let new_world = World::new();
+                            self.ecs = new_world;
+                            self.new_game();
+                            next_status = RunState::Running;
+                        } else if key == rltk::VirtualKeyCode::Up {
+                            if index > 0 {
+                                next_status = RunState::MissionSelect { index: index - 1 };
+                            }
+                        } else if key == rltk::VirtualKeyCode::Down {
+                            next_status = RunState::MissionSelect { index: index + 1 };
+                        }
+                    }
+                }
+            }
+            RunState::Shop => match ctx.key {
+                None => {}
+                Some(key) => {
+                    if key == rltk::VirtualKeyCode::Escape {
+                        next_status = RunState::Running;
+                    }
+                }
+            },
         }
 
         let mut status_writer = self.ecs.write_resource::<RunState>();
