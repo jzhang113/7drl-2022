@@ -33,16 +33,11 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
 
     for idx in map.camera.iter() {
         if map.known_tiles[idx] || SHOW_MAP {
-            let mut fg = map.color_map[idx];
-            let symbol = match map.tiles[idx] {
-                TileType::Floor => rltk::to_cp437('.'),
-                TileType::Wall => rltk::to_cp437('#'),
-                TileType::DownStairs => rltk::to_cp437('>'),
+            let (symbol, mut fg) = match map.tiles[idx] {
+                TileType::Floor => (rltk::to_cp437('.'), map_floor_color()),
+                TileType::Wall => (rltk::to_cp437('#'), map.color_map[idx]),
+                TileType::DownStairs => (rltk::to_cp437('>'), map_exit_color()),
             };
-
-            if idx == map.level_exit {
-                fg = map_exit_color();
-            }
 
             if !map.visible_tiles[idx] {
                 fg = fg.to_greyscale()
@@ -83,16 +78,18 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
             bg = bg.lerp(base_color, fade_percent);
         }
 
-        ctx.set_active_console(0);
-        set_map_tile_with_bg(
-            ctx,
-            &map.camera.origin,
-            &pos.as_point(),
-            fg,
-            bg,
-            render.symbol,
-        );
-        ctx.set_active_console(1);
+        if map.visible_tiles[map.get_index(pos.x, pos.y)] || SHOW_REND {
+            ctx.set_active_console(0);
+            set_map_tile_with_bg(
+                ctx,
+                &map.camera.origin,
+                &pos.as_point(),
+                fg,
+                bg,
+                render.symbol,
+            );
+            ctx.set_active_console(1);
+        }
     }
 
     for (pos, render, mtt, facing) in (
