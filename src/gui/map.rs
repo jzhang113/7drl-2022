@@ -34,13 +34,13 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     for idx in map.camera.iter() {
         if map.known_tiles[idx] || SHOW_MAP {
             let mut fg = map.color_map[idx];
-            let mut symbol = match map.tiles[idx] {
+            let symbol = match map.tiles[idx] {
                 TileType::Floor => rltk::to_cp437('.'),
                 TileType::Wall => rltk::to_cp437('#'),
+                TileType::DownStairs => rltk::to_cp437('>'),
             };
 
             if idx == map.level_exit {
-                symbol = rltk::to_cp437('>');
                 fg = map_exit_color();
             }
 

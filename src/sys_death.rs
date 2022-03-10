@@ -20,10 +20,12 @@ impl<'a> System<'a> for DeathSystem {
         for (ent, pos, health, multis) in
             (&entities, &positions, &healths, (&multitiles).maybe()).join()
         {
+            let pos_index = map.get_index(pos.x, pos.y);
+
             if health.current <= 0 {
                 if ent != *player {
                     dead.push(ent);
-                    map.untrack_creature(pos.as_point(), multis);
+                    map.untrack_creature(pos_index, multis);
                 } else {
                     *run_state = crate::RunState::Dead;
                 }

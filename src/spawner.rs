@@ -1,11 +1,91 @@
 use crate::*;
-use rltk::{Point, RandomNumberGenerator, Rect};
+use rltk::{Algorithm2D, Point, RandomNumberGenerator, Rect};
 use std::collections::HashMap;
 
 pub struct Spawner<'a> {
     ecs: &'a mut World,
     map: &'a mut Map,
     map_width: i32,
+}
+
+const MAX_MONSTERS: i32 = 4;
+
+fn room_table(map_depth: i32) -> Vec<(String, f32)> {
+    let mut spawn_ary = Vec::new();
+    spawn_ary.push(("mook".to_string(), 0.7));
+    spawn_ary.push(("archer".to_string(), 0.3));
+    spawn_ary
+}
+
+fn build_from_name(ecs: &mut World, name: &String, index: usize) -> Option<Entity> {
+    let point = { ecs.fetch::<Map>().index_to_point2d(index) };
+
+    match name.as_ref() {
+        "mook" => Some(build_mook(ecs, point)),
+        "archer" => Some(build_archer(ecs, point)),
+        _ => None,
+    }
+}
+
+/// Fills a region with stuff!
+pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
+    let spawn_table = room_table(map_depth);
+    let mut spawn_points: HashMap<usize, String> = HashMap::new();
+    let mut areas: Vec<usize> = Vec::from(area);
+
+    {
+        let mut rng = ecs.fetch_mut::<rltk::RandomNumberGenerator>();
+        let num_spawns = i32::min(
+            areas.len() as i32,
+            rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3,
+        );
+
+        if num_spawns == 0 {
+            return;
+        }
+
+        for _i in 0..num_spawns {
+            let array_index = if areas.len() == 1 {
+                0usize
+            } else {
+                (rng.roll_dice(1, areas.len() as i32) - 1) as usize
+            };
+
+            let map_idx = areas[array_index];
+            spawn_points.insert(map_idx, roll(&spawn_table, &mut *rng));
+            areas.remove(array_index);
+        }
+    }
+
+    // Actually spawn the monsters
+    for (map_idx, name) in spawn_points.iter() {
+        //let point = map.index_to_point2d(*map_idx);
+        let entity = build_from_name(ecs, name, *map_idx);
+        // track_entity(ecs, &mut *map, entity, point);
+        // spawn_entity(ecs, &spawn);
+
+        // track the entity if we built one
+        if let Some(entity) = entity {
+            let mut map = ecs.fetch_mut::<Map>();
+            let multis = ecs.read_storage::<MultiTile>();
+            map.track_creature(entity, *map_idx, multis.get(entity));
+        }
+    }
+}
+
+fn roll(chance: &Vec<(String, f32)>, rng: &mut rltk::RandomNumberGenerator) -> String {
+    let roll = rng.rand::<f32>();
+    let mut cumul_prob = 0.0;
+
+    for index in 0..chance.len() {
+        cumul_prob += chance[index].1;
+
+        if roll < cumul_prob {
+            return chance[index].0.to_string();
+        }
+    }
+
+    chance[0].0.to_string()
 }
 
 impl<'a> Spawner<'a> {
@@ -57,41 +137,36 @@ impl<'a> Spawner<'a> {
         spawn_points
     }
 
-    fn track_entity(&mut self, entity: Entity, point: Point) {
-        let multis = self.ecs.read_storage::<MultiTile>();
-        self.map.track_creature(entity, point, multis.get(entity));
-    }
+    // pub fn build(
+    //     &mut self,
+    //     room: &Rect,
+    //     min: i32,
+    //     max: i32,
+    //     chance: Vec<f32>,
+    //     builder: Vec<impl Fn(&mut World, Point) -> Entity>,
+    // ) {
+    //     for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
+    //         let point = Point::new(xpos, ypos);
+    //         let entity = builder[builder_index](self.ecs, point);
+    //         self.track_entity(entity, point);
+    //     }
+    // }
 
-    pub fn build(
-        &mut self,
-        room: &Rect,
-        min: i32,
-        max: i32,
-        chance: Vec<f32>,
-        builder: Vec<impl Fn(&mut World, Point) -> Entity>,
-    ) {
-        for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
-            let point = Point::new(xpos, ypos);
-            let entity = builder[builder_index](self.ecs, point);
-            self.track_entity(entity, point);
-        }
-    }
-
-    pub fn build_with_quality(
-        &mut self,
-        room: &Rect,
-        min: i32,
-        max: i32,
-        quality: i32,
-        chance: Vec<f32>,
-        builder: Vec<impl Fn(&mut World, Point, i32) -> Entity>,
-    ) {
-        for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
-            let point = Point::new(xpos, ypos);
-            let entity = builder[builder_index](self.ecs, point, quality);
-            self.track_entity(entity, point);
-        }
-    }
+    // pub fn build_with_quality(
+    //     &mut self,
+    //     room: &Rect,
+    //     min: i32,
+    //     max: i32,
+    //     quality: i32,
+    //     chance: Vec<f32>,
+    //     builder: Vec<impl Fn(&mut World, Point, i32) -> Entity>,
+    // ) {
+    //     for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
+    //         let point = Point::new(xpos, ypos);
+    //         let entity = builder[builder_index](self.ecs, point, quality);
+    //         self.track_entity(entity, point);
+    //     }
+    // }
 }
 
 // #region Player
@@ -291,3 +366,4 @@ pub fn _build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Enti
         })
         .build()
 }
+// #endregion

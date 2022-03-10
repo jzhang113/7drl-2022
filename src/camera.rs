@@ -13,6 +13,7 @@ const fn const_max(a: i32, b: i32) -> i32 {
     [a, b][(a < b) as usize]
 }
 
+#[derive(Copy, Clone)]
 pub struct Camera {
     pub origin: Point,
 }

@@ -4,7 +4,7 @@ extern crate lazy_static;
 rltk::embedded_resource!(FONT, "../resources/Zilk-16x16.png");
 rltk::embedded_resource!(ICONS, "../resources/custom_icons.png");
 
-use rltk::{GameState, Rltk, RGB};
+use rltk::{Algorithm2D, GameState, Rltk, RGB};
 use specs::prelude::*;
 
 mod attack_type;
@@ -15,6 +15,7 @@ mod direction;
 mod gamelog;
 mod gui;
 mod map;
+mod map_builder;
 mod monster_part;
 mod player;
 mod range_type;
@@ -110,16 +111,21 @@ impl State {
         self.ecs.insert(RunState::Running);
         self.ecs.insert(sys_particle::ParticleBuilder::new());
 
-        let rng = rltk::RandomNumberGenerator::new();
+        let mut rng = rltk::RandomNumberGenerator::new();
+        let mut map_builder = map_builder::random_builder(camera::MAP_W, camera::MAP_H, 1);
+
+        map_builder.build_map(&mut rng);
         self.ecs.insert(rng);
 
-        let mut map = map::build_level(&mut self.ecs, camera::MAP_W, camera::MAP_H, 1);
-        let player_pos = map.rooms[0].center();
+        let mut map = map_builder.get_map();
+        let player_pos = map_builder.get_starting_position().as_point();
         let player = spawner::build_player(&mut self.ecs, player_pos);
-        map.track_creature(player, player_pos, None);
+        let player_index = map.point2d_to_index(player_pos);
+        map.track_creature(player, player_index, None);
 
         self.ecs.insert(map);
         self.ecs.insert(player);
+        map_builder.spawn_entities(&mut self.ecs);
 
         let log = gamelog::GameLog {
             entries: vec!["Hello world!".to_string()],
@@ -196,29 +202,39 @@ impl State {
             map.depth
         };
 
-        let new_map = map::build_level(&mut self.ecs, camera::MAP_W, camera::MAP_H, curr_depth + 1);
+        let mut new_map_builder =
+            map_builder::random_builder(camera::MAP_W, camera::MAP_H, curr_depth + 1);
+        let new_map = {
+            let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
+            new_map_builder.build_map(&mut rng)
+        };
 
-        // update player position
-        let player = self.ecs.fetch::<Entity>();
-        let mut positions = self.ecs.write_storage::<Position>();
-        let mut player_pos = positions
-            .get_mut(*player)
-            .expect("player didn't have a position");
+        {
+            // update player position
+            let player = self.ecs.fetch::<Entity>();
+            let mut positions = self.ecs.write_storage::<Position>();
+            let mut player_pos = positions
+                .get_mut(*player)
+                .expect("player didn't have a position");
 
-        let new_player_pos = new_map.rooms[0].center();
-        player_pos.x = new_player_pos.x;
-        player_pos.y = new_player_pos.y;
+            let new_player_pos = new_map_builder.get_starting_position();
+            player_pos.x = new_player_pos.x;
+            player_pos.y = new_player_pos.y;
 
-        // replace map
-        let mut map_writer = self.ecs.write_resource::<Map>();
-        *map_writer = new_map;
+            // Mark the player's visibility as dirty
+            let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
+            let vs = viewshed_components.get_mut(*player);
+            if let Some(vs) = vs {
+                vs.dirty = true;
+            }
 
-        // Mark the player's visibility as dirty
-        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
-        let vs = viewshed_components.get_mut(*player);
-        if let Some(vs) = vs {
-            vs.dirty = true;
+            // replace map
+            let mut map_writer = self.ecs.write_resource::<Map>();
+            *map_writer = new_map;
         }
+
+        // fill the map
+        new_map_builder.spawn_entities(&mut self.ecs);
     }
 }
 
