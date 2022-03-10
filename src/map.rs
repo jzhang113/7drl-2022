@@ -30,7 +30,6 @@ pub struct Map {
     pub known_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
-    pub level_exit: usize,
     search_args: SearchArgs,
 }
 
@@ -87,6 +86,8 @@ impl Map {
             depth,
             camera: crate::Camera {
                 origin: rltk::Point::zero(),
+                map_width: width,
+                map_height: height,
             },
             color_map: (0..dim).map(|_| crate::map_wall_color(rng)).collect(),
             item_map: HashMap::new(),
@@ -94,7 +95,6 @@ impl Map {
             known_tiles: vec![false; dim],
             visible_tiles: vec![false; dim],
             blocked_tiles: vec![false; dim],
-            level_exit: 0,
             search_args: SearchArgs::default(),
         }
     }

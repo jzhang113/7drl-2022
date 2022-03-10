@@ -4,6 +4,7 @@ extern crate lazy_static;
 rltk::embedded_resource!(FONT, "../resources/Zilk-16x16.png");
 rltk::embedded_resource!(ICONS, "../resources/custom_icons.png");
 
+use crate::map_builder::MapBuilder;
 use rltk::{Algorithm2D, GameState, Rltk, RGB};
 use specs::prelude::*;
 
@@ -112,7 +113,8 @@ impl State {
         self.ecs.insert(sys_particle::ParticleBuilder::new());
 
         let mut rng = rltk::RandomNumberGenerator::new();
-        let mut map_builder = map_builder::random_builder(camera::MAP_W, camera::MAP_H, 1);
+        let mut map_builder = // map_builder::random_builder(camera::MAP_W, camera::MAP_H, 1);
+            map_builder::overworld::OverworldBuilder::new(&mut rng);
 
         map_builder.build_map(&mut rng);
         self.ecs.insert(rng);

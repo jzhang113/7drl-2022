@@ -52,8 +52,8 @@ pub fn build_rogue_map(
     let exit_room = map.rooms.len() - 1;
     let exit_x = rng.range(map.rooms[exit_room].x1, map.rooms[exit_room].x2);
     let exit_y = rng.range(map.rooms[exit_room].y1, map.rooms[exit_room].y2);
-    map.level_exit = map.get_index(exit_x, exit_y);
-    println!("{}", map.level_exit);
+    // map.level_exit = map.get_index(exit_x, exit_y);
+    // println!("{}", map.level_exit);
 
     map
 }

@@ -251,7 +251,7 @@ impl DrunkardsWalkBuilder {
         self.take_snapshot();
 
         // Place the stairs
-        self.map.level_exit = exit_tile;
+        self.map.tiles[exit_tile] = TileType::DownStairs;
         self.take_snapshot();
 
         // Now we build a noise map for use in spawning entities later

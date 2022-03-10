@@ -1,6 +1,7 @@
 pub mod bsp;
 mod common;
 pub mod drunk_walk;
+pub mod overworld;
 
 const SHOW_MAPGEN_VISUALIZER: bool = false;
 

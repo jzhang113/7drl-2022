@@ -280,3 +280,72 @@ pub fn _build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Enti
         .build()
 }
 // #endregion
+
+fn build_npc_base(ecs: &mut World, point: Point) -> EntityBuilder {
+    ecs.create_entity()
+        .with(Position {
+            x: point.x,
+            y: point.y,
+        })
+        .with(ViewableIndex { list_index: None })
+        .with(Schedulable {
+            current: 0,
+            base: 24,
+            delta: 4,
+        })
+        .with(Viewshed {
+            visible: Vec::new(),
+            dirty: true,
+            range: 20,
+        })
+        .with(BlocksTile)
+        .with(Health {
+            current: 10,
+            max: 10,
+        })
+}
+
+pub fn build_npc_blacksmith(ecs: &mut World, point: Point) -> Entity {
+    build_npc_base(ecs, point)
+        .with(Renderable {
+            symbol: rltk::to_cp437('@'),
+            fg: RGB::named(rltk::GREEN),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Viewable {
+            name: "Blacksmith".to_string(),
+            description: vec!["That's you!".to_string()],
+            seen: false,
+        })
+        .build()
+}
+
+pub fn build_npc_shopkeeper(ecs: &mut World, point: Point) -> Entity {
+    build_npc_base(ecs, point)
+        .with(Renderable {
+            symbol: rltk::to_cp437('@'),
+            fg: RGB::named(rltk::RED),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Viewable {
+            name: "Shopkeeper".to_string(),
+            description: vec!["That's you!".to_string()],
+            seen: false,
+        })
+        .build()
+}
+
+pub fn build_npc_handler(ecs: &mut World, point: Point) -> Entity {
+    build_npc_base(ecs, point)
+        .with(Renderable {
+            symbol: rltk::to_cp437('@'),
+            fg: RGB::named(rltk::BLUE),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Viewable {
+            name: "Handler".to_string(),
+            description: vec!["That's you!".to_string()],
+            seen: false,
+        })
+        .build()
+}

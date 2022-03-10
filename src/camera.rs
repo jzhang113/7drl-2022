@@ -6,24 +6,31 @@ pub const VIEW_H: i32 = 50;
 pub const MAP_W: i32 = 120;
 pub const MAP_H: i32 = 120;
 
-const MAX_X: i32 = const_max(MAP_W - VIEW_W, 0);
-const MAX_Y: i32 = const_max(MAP_H - VIEW_H, 0);
-
-const fn const_max(a: i32, b: i32) -> i32 {
-    [a, b][(a < b) as usize]
-}
-
 #[derive(Copy, Clone)]
 pub struct Camera {
     pub origin: Point,
+    pub map_width: i32,
+    pub map_height: i32,
 }
 
 impl Camera {
     pub fn update(&mut self, center: Point) {
-        let top_left_x = max(center.x - VIEW_W / 2, 0);
-        let top_left_y = max(center.y - VIEW_H / 2, 0);
-        let origin_x = min(top_left_x, MAX_X);
-        let origin_y = min(top_left_y, MAX_Y);
+        let origin_x = if self.map_width < VIEW_W {
+            (self.map_width - VIEW_W) / 2
+        } else {
+            let top_left_x = max(center.x - VIEW_W / 2, 0);
+            let max_x = max(self.map_width - VIEW_W, 0);
+            min(top_left_x, max_x)
+        };
+
+        let origin_y = if self.map_height < VIEW_H {
+            (self.map_height - VIEW_H) / 2
+        } else {
+            let top_left_y = max(center.y - VIEW_H / 2, 0);
+            let max_y = max(self.map_height - VIEW_H, 0);
+            min(top_left_y, max_y)
+        };
+
         self.origin = Point::new(origin_x, origin_y);
     }
 
@@ -35,7 +42,12 @@ impl Camera {
     }
 
     pub fn iter(&self) -> CameraIterator {
-        CameraIterator::new(self.origin)
+        CameraIterator::new(
+            max(self.origin.x, 0),
+            max(self.origin.y, 0),
+            self.map_width,
+            self.map_height,
+        )
     }
 }
 
@@ -43,19 +55,23 @@ pub struct CameraIterator {
     initial: Point,
     x: i32,
     y: i32,
+    map_width: i32,
+    map_height: i32,
 }
 
 impl CameraIterator {
-    fn new(initial: Point) -> Self {
+    fn new(initial_x: i32, initial_y: i32, map_width: i32, map_height: i32) -> Self {
         Self {
-            initial,
-            x: initial.x - 1,
-            y: initial.y,
+            initial: rltk::Point::new(initial_x, initial_y),
+            x: initial_x - 1,
+            y: initial_y,
+            map_width,
+            map_height,
         }
     }
 
     fn get_index(&self) -> usize {
-        ((self.y * MAP_W) + self.x) as usize
+        ((self.y * self.map_width) + self.x) as usize
     }
 }
 
@@ -64,13 +80,13 @@ impl Iterator for CameraIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.x += 1;
-        if self.x < self.initial.x + VIEW_W {
+        if self.x < min(self.map_width, self.initial.x + VIEW_W) {
             return Some(self.get_index());
         }
 
         self.x = self.initial.x;
         self.y += 1;
-        if self.y < self.initial.y + VIEW_H {
+        if self.y < min(self.map_height, self.initial.y + VIEW_H) {
             return Some(self.get_index());
         }
 

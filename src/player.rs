@@ -17,7 +17,7 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
         let new_y = min(map.height, max(0, pos.y + dy));
         let dest_index = map.get_index(new_x, new_y);
 
-        if dest_index == map.level_exit {
+        if map.tiles[dest_index] == TileType::DownStairs {
             return RunState::GenerateMap;
         }
 
