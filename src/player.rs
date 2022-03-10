@@ -166,8 +166,8 @@ pub fn ranged_target(
 
     if ignore_targetting {
         ctx.print_color(
-            crate::gui::MAP_X,
-            crate::gui::MAP_Y - 1,
+            crate::gui::MAP_SCREEN_X,
+            crate::gui::MAP_SCREEN_Y - 1,
             crate::header_message_color(),
             crate::bg_color(),
             "Confirm use",
@@ -182,8 +182,8 @@ pub fn ranged_target(
             for idx in viewshed.visible.iter() {
                 if tiles_in_range.contains(idx) {
                     ctx.set_bg(
-                        crate::gui::MAP_X + idx.x,
-                        crate::gui::MAP_Y + idx.y,
+                        crate::gui::MAP_SCREEN_X + idx.x,
+                        crate::gui::MAP_SCREEN_Y + idx.y,
                         crate::tiles_in_range_color(),
                     );
                     available_cells.push(idx);
@@ -203,24 +203,24 @@ pub fn ranged_target(
             cursor_color = crate::invalid_cursor_color();
         }
         ctx.set_bg(
-            crate::gui::MAP_X + gs.cursor.x,
-            crate::gui::MAP_Y + gs.cursor.y,
+            crate::gui::MAP_SCREEN_X + gs.cursor.x,
+            crate::gui::MAP_SCREEN_Y + gs.cursor.y,
             cursor_color,
         );
         ctx.set_active_console(1);
 
         if valid_target {
             ctx.print_color(
-                crate::gui::MAP_X,
-                crate::gui::MAP_Y - 1,
+                crate::gui::MAP_SCREEN_X,
+                crate::gui::MAP_SCREEN_Y - 1,
                 crate::header_message_color(),
                 crate::bg_color(),
                 "Select Target",
             );
         } else {
             ctx.print_color(
-                crate::gui::MAP_X,
-                crate::gui::MAP_Y - 1,
+                crate::gui::MAP_SCREEN_X,
+                crate::gui::MAP_SCREEN_Y - 1,
                 crate::header_err_color(),
                 crate::bg_color(),
                 "Invalid Target",

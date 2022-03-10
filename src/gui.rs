@@ -2,62 +2,57 @@ use super::*;
 use rltk::{Algorithm2D, Rltk, RGB};
 
 // #region UI constants
-pub const MAP_X: i32 = SIDE_W + 1;
-pub const MAP_Y: i32 = 1;
-pub const MAP_W: i32 = 79;
-pub const MAP_H: i32 = 50;
+pub const MAP_SCREEN_X: i32 = SIDE_W + 1;
+pub const MAP_SCREEN_Y: i32 = 1;
 
 const SIDE_X: i32 = 0;
 const SIDE_Y: i32 = 0;
 const SIDE_W: i32 = 16;
 const SIDE_H: i32 = 50;
 
-pub const CONSOLE_WIDTH: i32 = MAP_W + SIDE_W + 2;
-pub const CONSOLE_HEIGHT: i32 = MAP_H + 15 + 2;
+pub const CONSOLE_WIDTH: i32 = camera::VIEW_W + SIDE_W + 2;
+pub const CONSOLE_HEIGHT: i32 = camera::VIEW_H + 15 + 2;
 
 const SHOW_MAP: bool = false;
 const SHOW_REND: bool = false;
 // #endregion
 
 pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
+    // map elements
     draw_map(ecs, ctx);
     draw_renderables(ecs, ctx);
-    draw_sidebar(ecs, ctx);
-
-    draw_blocked_tiles(ecs, ctx);
+    // draw_blocked_tiles(ecs, ctx);
     draw_attacks_in_progress(ecs, ctx);
+
+    // non-map elements
+    draw_sidebar(ecs, ctx);
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     ctx.draw_box(
-        MAP_X - 1,
-        MAP_Y - 1,
-        MAP_W + 1,
-        MAP_H + 1,
+        MAP_SCREEN_X - 1,
+        MAP_SCREEN_Y - 1,
+        camera::VIEW_W + 1,
+        camera::VIEW_H + 1,
         RGB::named(rltk::WHITE),
         RGB::named(rltk::BLACK),
     );
 
     let map = ecs.fetch::<Map>();
     let floor_str = format!("FLOOR {}", map.depth);
-    ctx.print(MAP_W + MAP_X - floor_str.len() as i32, MAP_Y - 1, floor_str);
+    ctx.print(
+        camera::VIEW_W + MAP_SCREEN_X - floor_str.len() as i32,
+        MAP_SCREEN_Y - 1,
+        floor_str,
+    );
 
-    let mut x = 0;
-    let mut y = 0;
-
-    for (idx, tile) in map.tiles.iter().enumerate() {
+    for idx in map.camera.iter() {
         if map.known_tiles[idx] || SHOW_MAP {
-            let mut symbol;
             let mut fg = map.color_map[idx];
-
-            match tile {
-                TileType::Floor => {
-                    symbol = rltk::to_cp437('.');
-                }
-                TileType::Wall => {
-                    symbol = rltk::to_cp437('#');
-                }
-            }
+            let mut symbol = match map.tiles[idx] {
+                TileType::Floor => rltk::to_cp437('.'),
+                TileType::Wall => rltk::to_cp437('#'),
+            };
 
             if idx == map.level_exit {
                 symbol = rltk::to_cp437('>');
@@ -67,13 +62,14 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
             if !map.visible_tiles[idx] {
                 fg = fg.to_greyscale()
             }
-            ctx.set(MAP_X + x, MAP_Y + y, fg, bg_color(), symbol);
-        }
 
-        x += 1;
-        if x >= map.width {
-            x = 0;
-            y += 1;
+            set_map_tile(
+                ctx,
+                &map.camera.origin,
+                &map.index_to_point2d(idx),
+                fg,
+                symbol,
+            );
         }
     }
 }
@@ -87,6 +83,10 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
     let map = ecs.fetch::<Map>();
 
     for (pos, render, particle) in (&positions, &renderables, &particles).join() {
+        if !map.camera.on_screen(pos.as_point()) {
+            continue;
+        }
+
         let mut fg = render.fg;
         let mut bg = render.bg;
 
@@ -99,7 +99,14 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
         }
 
         ctx.set_active_console(0);
-        ctx.set(MAP_X + pos.x, MAP_Y + pos.y, fg, bg, render.symbol);
+        set_map_tile_with_bg(
+            ctx,
+            &map.camera.origin,
+            &pos.as_point(),
+            fg,
+            bg,
+            render.symbol,
+        );
         ctx.set_active_console(1);
     }
 
@@ -123,7 +130,14 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
         };
 
         if map.visible_tiles[map.get_index(pos.x, pos.y)] || SHOW_REND {
-            ctx.set(MAP_X + pos.x, MAP_Y + pos.y, render.fg, render.bg, symbol);
+            set_map_tile_with_bg(
+                ctx,
+                &map.camera.origin,
+                &pos.as_point(),
+                render.fg,
+                render.bg,
+                symbol,
+            );
         }
 
         if let Some(mtt) = mtt {
@@ -132,9 +146,10 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
                     if map.visible_tiles[map.get_index(pos.x + mtt_pos.x, pos.y + mtt_pos.y)]
                         || SHOW_REND
                     {
-                        ctx.set(
-                            MAP_X + pos.x + mtt_pos.x,
-                            MAP_Y + pos.y + mtt_pos.y,
+                        set_map_tile_with_bg(
+                            ctx,
+                            &map.camera.origin,
+                            &(pos.as_point() + *mtt_pos),
                             render.fg,
                             render.bg,
                             *mtt_symbol,
@@ -150,15 +165,14 @@ pub fn draw_blocked_tiles(ecs: &World, ctx: &mut Rltk) {
     let map = ecs.fetch::<Map>();
 
     ctx.set_active_console(0);
-    for (index, is_blocked) in map.blocked_tiles.iter().enumerate() {
-        if *is_blocked {
+    for index in map.camera.iter() {
+        if map.blocked_tiles[index] {
             let point = map.index_to_point2d(index);
-            ctx.set(
-                MAP_X + point.x,
-                MAP_Y + point.y,
+            highlight_bg(
+                ctx,
+                &map.camera.origin,
+                &point,
                 RGB::named(rltk::DARKSLATEGRAY),
-                RGB::named(rltk::BLACK),
-                rltk::to_cp437('█'),
             );
         }
     }
@@ -168,25 +182,61 @@ pub fn draw_blocked_tiles(ecs: &World, ctx: &mut Rltk) {
 pub fn draw_attacks_in_progress(ecs: &World, ctx: &mut Rltk) {
     let attacks = ecs.read_storage::<AttackIntent>();
     let in_progress = ecs.read_storage::<AttackInProgress>();
+    let map = ecs.fetch::<Map>();
 
     for (attack, _) in (&attacks, &in_progress).join() {
         ctx.set_active_console(0);
         for point in attack_type::each_attack_target(attack.main, attack.loc) {
-            ctx.set(
-                MAP_X + point.x,
-                MAP_Y + point.y,
-                RGB::named(rltk::DARKRED),
-                RGB::named(rltk::BLACK),
-                rltk::to_cp437('█'),
-            );
+            if !map.camera.on_screen(point) {
+                continue;
+            }
+
+            highlight_bg(ctx, &map.camera.origin, &point, RGB::named(rltk::DARKRED));
         }
         ctx.set_active_console(1);
     }
 }
 
-fn highlight_bg(ctx: &mut Rltk, pos: &rltk::Point, color: RGB) {
+fn set_map_tile(
+    ctx: &mut Rltk,
+    camera_pos: &rltk::Point,
+    pos: &rltk::Point,
+    fg: RGB,
+    symbol: rltk::FontCharType,
+) {
+    ctx.set(
+        MAP_SCREEN_X + pos.x - camera_pos.x,
+        MAP_SCREEN_Y + pos.y - camera_pos.y,
+        fg,
+        bg_color(),
+        symbol,
+    );
+}
+
+fn set_map_tile_with_bg(
+    ctx: &mut Rltk,
+    camera_pos: &rltk::Point,
+    pos: &rltk::Point,
+    fg: RGB,
+    bg: RGB,
+    symbol: rltk::FontCharType,
+) {
+    ctx.set(
+        MAP_SCREEN_X + pos.x - camera_pos.x,
+        MAP_SCREEN_Y + pos.y - camera_pos.y,
+        fg,
+        bg,
+        symbol,
+    );
+}
+
+fn highlight_bg(ctx: &mut Rltk, camera_pos: &rltk::Point, pos: &rltk::Point, color: RGB) {
     ctx.set_active_console(0);
-    ctx.set_bg(MAP_X + pos.x, MAP_Y + pos.y, color);
+    ctx.set_bg(
+        MAP_SCREEN_X + pos.x - camera_pos.x,
+        MAP_SCREEN_Y + pos.y - camera_pos.y,
+        color,
+    );
     ctx.set_active_console(1);
 }
 
@@ -457,6 +507,7 @@ pub fn draw_viewable_info(ecs: &World, ctx: &mut Rltk, entity: &Entity, index: u
     let healths = ecs.read_storage::<Health>();
     let atk_in_progress = ecs.read_storage::<AttackInProgress>();
     let blocking = ecs.read_storage::<BlockAttack>();
+    let map = ecs.fetch::<Map>();
 
     let pos = positions
         .get(*entity)
@@ -464,10 +515,15 @@ pub fn draw_viewable_info(ecs: &World, ctx: &mut Rltk, entity: &Entity, index: u
     let view = viewables.get(*entity).expect("viewable didn't have a view");
     let health = healths.get(*entity).expect("viewable didn't have health");
 
-    let x = MAP_X + pos.x;
-    let y = MAP_Y + pos.y;
+    let x = MAP_SCREEN_X + pos.x - map.camera.origin.x;
+    let y = MAP_SCREEN_Y + pos.y - map.camera.origin.y;
 
-    highlight_bg(ctx, &Position::as_point(pos), selected_color);
+    highlight_bg(
+        ctx,
+        &map.camera.origin,
+        &Position::as_point(pos),
+        selected_color,
+    );
 
     let (box_x, box_y) = position_box(ctx, x, y, 15, 10, selected_color, bg_color);
 
@@ -495,7 +551,7 @@ pub fn draw_viewable_info(ecs: &World, ctx: &mut Rltk, entity: &Entity, index: u
 // returns the top left of the new box
 fn position_box(ctx: &mut Rltk, x: i32, y: i32, w: i32, h: i32, fg: RGB, bg: RGB) -> (i32, i32) {
     let right = x + w < CONSOLE_WIDTH - 1;
-    let down = y + h < MAP_H;
+    let down = y + h < camera::VIEW_H;
 
     // boxes prefer to be right and down if several positions are possible
     if right {

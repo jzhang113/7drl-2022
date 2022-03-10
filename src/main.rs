@@ -8,6 +8,7 @@ use rltk::{GameState, Rltk, RGB};
 use specs::prelude::*;
 
 mod attack_type;
+mod camera;
 mod colors;
 mod components;
 mod direction;
@@ -32,6 +33,7 @@ mod sys_turn;
 mod sys_visibility;
 
 pub use attack_type::*;
+pub use camera::*;
 pub use colors::*;
 pub use components::*;
 pub use direction::Direction;
@@ -111,7 +113,7 @@ impl State {
         let rng = rltk::RandomNumberGenerator::new();
         self.ecs.insert(rng);
 
-        let mut map = map::build_level(&mut self.ecs, gui::MAP_W, gui::MAP_H, 1);
+        let mut map = map::build_level(&mut self.ecs, camera::MAP_W, camera::MAP_H, 1);
         let player_pos = map.rooms[0].center();
         let player = spawner::build_player(&mut self.ecs, player_pos);
         map.track_creature(player, player_pos, None);
@@ -194,12 +196,7 @@ impl State {
             map.depth
         };
 
-        let new_map = crate::map::build_level(
-            &mut self.ecs,
-            crate::gui::MAP_W,
-            crate::gui::MAP_H,
-            curr_depth + 1,
-        );
+        let new_map = map::build_level(&mut self.ecs, camera::MAP_W, camera::MAP_H, curr_depth + 1);
 
         // update player position
         let player = self.ecs.fetch::<Entity>();

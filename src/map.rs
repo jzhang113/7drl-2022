@@ -22,6 +22,7 @@ pub struct Map {
     pub width: i32,
     pub height: i32,
     pub depth: i32,
+    pub camera: crate::Camera,
     pub color_map: Vec<rltk::RGB>,
     pub item_map: HashMap<usize, Entity>,
     pub creature_map: HashMap<usize, Entity>,
@@ -341,6 +342,9 @@ pub fn build_rogue_map(
         width,
         height,
         depth,
+        camera: crate::Camera {
+            origin: rltk::Point::zero(),
+        },
         color_map: (0..dim).map(|_| crate::map_wall_color(rng)).collect(),
         item_map: HashMap::new(),
         creature_map: HashMap::new(),
@@ -351,11 +355,11 @@ pub fn build_rogue_map(
         search_args: SearchArgs::default(),
     };
 
-    const MAX_ROOMS: i32 = 1;
+    const MAX_ROOMS: i32 = 12;
     const MIN_ROOM_WIDTH: i32 = 20;
-    const MAX_ROOM_WIDTH: i32 = 30;
+    const MAX_ROOM_WIDTH: i32 = 50;
     const MIN_ROOM_HEIGHT: i32 = 20;
-    const MAX_ROOM_HEIGHT: i32 = 30;
+    const MAX_ROOM_HEIGHT: i32 = 50;
 
     for _ in 0..MAX_ROOMS {
         let w = rng.range(MIN_ROOM_WIDTH, MAX_ROOM_WIDTH);

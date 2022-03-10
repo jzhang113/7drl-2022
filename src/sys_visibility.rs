@@ -47,6 +47,8 @@ impl<'a> System<'a> for VisibilitySystem {
                             player_seen.push(*seen_ent);
                         }
                     }
+
+                    map.camera.update(pos.as_point());
                 }
             }
         }
