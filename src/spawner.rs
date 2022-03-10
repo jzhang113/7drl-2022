@@ -1,16 +1,10 @@
 use crate::*;
-use rltk::{Algorithm2D, Point, RandomNumberGenerator, Rect};
+use rltk::{Algorithm2D, Point};
 use std::collections::HashMap;
-
-pub struct Spawner<'a> {
-    ecs: &'a mut World,
-    map: &'a mut Map,
-    map_width: i32,
-}
 
 const MAX_MONSTERS: i32 = 4;
 
-fn room_table(map_depth: i32) -> Vec<(String, f32)> {
+fn room_table(_map_depth: i32) -> Vec<(String, f32)> {
     let mut spawn_ary = Vec::new();
     spawn_ary.push(("mook".to_string(), 0.7));
     spawn_ary.push(("archer".to_string(), 0.3));
@@ -86,87 +80,6 @@ fn roll(chance: &Vec<(String, f32)>, rng: &mut rltk::RandomNumberGenerator) -> S
     }
 
     chance[0].0.to_string()
-}
-
-impl<'a> Spawner<'a> {
-    pub fn new(ecs: &'a mut World, map: &'a mut Map, map_width: i32) -> Self {
-        Spawner {
-            ecs,
-            map,
-            map_width,
-        }
-    }
-
-    fn get_spawn_points(
-        &mut self,
-        room: &Rect,
-        min: i32,
-        max: i32,
-        chance: Vec<f32>,
-    ) -> Vec<(usize, i32, i32)> {
-        let mut spawn_points = Vec::new();
-        let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
-        let spawn_count = rng.range(min, max);
-
-        for _ in 0..spawn_count {
-            let dx = rng.range(1, room.width());
-            let dy = rng.range(1, room.height());
-            let xpos = room.x1 + dx;
-            let ypos = room.y1 + dy;
-            let index = ((ypos * self.map_width) + xpos) as usize;
-
-            // don't spawn over something else
-            if !self.map.blocked_tiles[index] && index != self.map.level_exit {
-                let roll = rng.rand::<f32>();
-                let mut cumul_prob = 0.0;
-                let mut builder_index = 0;
-
-                for index in 0..chance.len() {
-                    cumul_prob += chance[index];
-
-                    if roll < cumul_prob {
-                        builder_index = index;
-                        break;
-                    }
-                }
-
-                spawn_points.push((builder_index, xpos, ypos));
-            }
-        }
-
-        spawn_points
-    }
-
-    // pub fn build(
-    //     &mut self,
-    //     room: &Rect,
-    //     min: i32,
-    //     max: i32,
-    //     chance: Vec<f32>,
-    //     builder: Vec<impl Fn(&mut World, Point) -> Entity>,
-    // ) {
-    //     for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
-    //         let point = Point::new(xpos, ypos);
-    //         let entity = builder[builder_index](self.ecs, point);
-    //         self.track_entity(entity, point);
-    //     }
-    // }
-
-    // pub fn build_with_quality(
-    //     &mut self,
-    //     room: &Rect,
-    //     min: i32,
-    //     max: i32,
-    //     quality: i32,
-    //     chance: Vec<f32>,
-    //     builder: Vec<impl Fn(&mut World, Point, i32) -> Entity>,
-    // ) {
-    //     for (builder_index, xpos, ypos) in self.get_spawn_points(room, min, max, chance) {
-    //         let point = Point::new(xpos, ypos);
-    //         let entity = builder[builder_index](self.ecs, point, quality);
-    //         self.track_entity(entity, point);
-    //     }
-    // }
 }
 
 // #region Player

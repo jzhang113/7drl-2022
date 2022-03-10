@@ -66,7 +66,7 @@ pub fn build_level(ecs: &mut specs::World, width: i32, height: i32, depth: i32) 
 
     // we need to clone the list of rooms so that spawner can borrow the map
     let cloned_rooms = map.rooms.clone();
-    let mut spawner = spawner::Spawner::new(ecs, &mut map, width);
+    // let mut spawner = spawner::Spawner::new(ecs, &mut map, width);
 
     for room in cloned_rooms.iter() {
         let quality = depth;
