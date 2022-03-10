@@ -3,8 +3,8 @@ use std::cmp::{max, min};
 
 pub const VIEW_W: i32 = 79;
 pub const VIEW_H: i32 = 50;
-pub const MAP_W: i32 = 150;
-pub const MAP_H: i32 = 150;
+pub const MAP_W: i32 = 120;
+pub const MAP_H: i32 = 120;
 
 const MAX_X: i32 = const_max(MAP_W - VIEW_W, 0);
 const MAX_Y: i32 = const_max(MAP_H - VIEW_H, 0);

@@ -13,6 +13,7 @@ pub struct DrunkardSettings {
     pub spawn_mode: DrunkSpawnMode,
     pub drunken_lifetime: i32,
     pub floor_percent: f32,
+    pub digger_size: i32,
 }
 
 pub struct DrunkardsWalkBuilder {
@@ -94,6 +95,7 @@ impl DrunkardsWalkBuilder {
                 spawn_mode: DrunkSpawnMode::StartingPoint,
                 drunken_lifetime: 1000,
                 floor_percent: 0.5,
+                digger_size: 4,
             },
         }
     }
@@ -114,6 +116,7 @@ impl DrunkardsWalkBuilder {
                 spawn_mode: DrunkSpawnMode::Random,
                 drunken_lifetime: 400,
                 floor_percent: 0.5,
+                digger_size: 3,
             },
         }
     }
@@ -134,6 +137,7 @@ impl DrunkardsWalkBuilder {
                 spawn_mode: DrunkSpawnMode::Random,
                 drunken_lifetime: 100,
                 floor_percent: 0.4,
+                digger_size: 2,
             },
         }
     }
@@ -173,19 +177,25 @@ impl DrunkardsWalkBuilder {
                         drunk_x = self.starting_position.x;
                         drunk_y = self.starting_position.y;
                     } else {
-                        drunk_x = rng.roll_dice(1, self.map.width - 3) + 1;
-                        drunk_y = rng.roll_dice(1, self.map.height - 3) + 1;
+                        drunk_x =
+                            rng.roll_dice(1, self.map.width - self.settings.digger_size - 2) + 1;
+                        drunk_y =
+                            rng.roll_dice(1, self.map.height - self.settings.digger_size - 2) + 1;
                     }
                 }
             }
             let mut drunk_life = self.settings.drunken_lifetime;
 
             while drunk_life > 0 {
-                let drunk_idx = self.map.get_index(drunk_x, drunk_y);
-                if self.map.tiles[drunk_idx] == TileType::Wall {
-                    did_something = true;
+                for dx in 0..=self.settings.digger_size {
+                    for dy in 0..=self.settings.digger_size {
+                        let drunk_idx = self.map.get_index(drunk_x + dx, drunk_y + dy);
+                        if self.map.tiles[drunk_idx] == TileType::Wall {
+                            did_something = true;
+                        }
+                        self.map.tiles[drunk_idx] = TileType::DownStairs;
+                    }
                 }
-                self.map.tiles[drunk_idx] = TileType::DownStairs;
 
                 let stagger_direction = rng.roll_dice(1, 4);
                 match stagger_direction {
@@ -195,7 +205,7 @@ impl DrunkardsWalkBuilder {
                         }
                     }
                     2 => {
-                        if drunk_x < self.map.width - 2 {
+                        if drunk_x < self.map.width - self.settings.digger_size - 1 {
                             drunk_x += 1;
                         }
                     }
@@ -205,7 +215,7 @@ impl DrunkardsWalkBuilder {
                         }
                     }
                     _ => {
-                        if drunk_y < self.map.height - 2 {
+                        if drunk_y < self.map.height - self.settings.digger_size - 1 {
                             drunk_y += 1;
                         }
                     }
