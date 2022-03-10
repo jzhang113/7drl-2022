@@ -94,19 +94,19 @@ pub fn draw_sidebar(ecs: &World, ctx: &mut Rltk) {
         // TODO: what to do with excess?
     }
 
-    ctx.draw_box(
-        0,
-        50,
-        79,
-        6,
-        RGB::named(rltk::WHITE),
-        RGB::named(rltk::BLACK),
-    );
+    // ctx.draw_box(
+    //     SIDE_X,
+    //     VIEW_H,
+    //     CONSOLE_WIDTH - 1,
+    //     6,
+    //     RGB::named(rltk::WHITE),
+    //     RGB::named(rltk::BLACK),
+    // );
 
-    let log = ecs.fetch::<gamelog::GameLog>();
-    for (line, message) in log.entries.iter().rev().take(5).enumerate() {
-        ctx.print(2, 50 + line + 1, message);
-    }
+    // let log = ecs.fetch::<gamelog::GameLog>();
+    // for (line, message) in log.entries.iter().rev().take(5).enumerate() {
+    //     ctx.print(2, VIEW_H + (line as i32) + 1, message);
+    // }
 
     ctx.print(74, 1, format!("{} fps", ctx.fps));
     super::tooltip::draw_tooltips(ecs, ctx);

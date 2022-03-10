@@ -233,9 +233,6 @@ impl GameState for State {
         ctx.cls();
         sys_particle::cleanup_particles(&mut self.ecs, ctx);
 
-        // draw map + gui
-        gui::map::draw_all(&self.ecs, ctx);
-
         let mut next_status;
         let player_point;
 
@@ -250,6 +247,11 @@ impl GameState for State {
 
             // get the current RunState
             next_status = *self.ecs.fetch::<RunState>();
+        }
+
+        // draw map + gui
+        if next_status != RunState::Overworld {
+            gui::map::draw_all(&self.ecs, ctx);
         }
 
         match next_status {

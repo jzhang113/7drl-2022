@@ -141,6 +141,10 @@ fn handle_keys(
             VirtualKeyCode::Period => {
                 return RunState::Running;
             }
+            VirtualKeyCode::D => {
+                // TODO: For testing, remove
+                return RunState::Dead;
+            }
             VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
             _ => RunState::AwaitingInput,
         },
