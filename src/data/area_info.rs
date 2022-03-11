@@ -4,13 +4,13 @@ lazy_static! {
     static ref AREA_DATA: AreaData = load_area_data();
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct AreaData {
     prefixes: Vec<AreaInfo>,
     areas: Vec<AreaInfo>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone)]
 pub struct AreaInfo {
     pub name: String,
 
@@ -25,8 +25,10 @@ fn default_color() -> String {
     "#FFFFFF".to_string()
 }
 
+rltk::embedded_resource!(AREA_RAW_DATA, "../../data/area_info.yaml");
+
 fn load_area_data() -> AreaData {
-    rltk::link_resource!(AREA_DATA, "../../data/area_info.yaml");
+    rltk::link_resource!(AREA_RAW_DATA, "../../data/area_info.yaml");
 
     // Retrieve the raw data as an array of u8 (8-bit unsigned chars)
     let raw_data = rltk::embedding::EMBED
@@ -43,8 +45,8 @@ pub fn get_random_area(rng: &mut rltk::RandomNumberGenerator) -> AreaInfo {
     let prefix_index = rng.range(0, AREA_DATA.prefixes.len());
     let area_index = rng.range(0, AREA_DATA.areas.len());
 
-    let prefix_info = AREA_DATA.prefixes[prefix_index];
-    let area_info = AREA_DATA.areas[area_index];
+    let prefix_info = AREA_DATA.prefixes[prefix_index].clone();
+    let area_info = AREA_DATA.areas[area_index].clone();
 
     AreaInfo {
         name: get_combined_name(&prefix_info, &area_info),
@@ -69,9 +71,9 @@ fn get_combined_generator(prefix: &AreaInfo, area: &AreaInfo) -> usize {
 
 fn get_combined_color(prefix: &AreaInfo, area: &AreaInfo) -> String {
     if prefix.color_hex != default_color() {
-        prefix.color_hex
+        prefix.color_hex.clone()
     } else if area.color_hex != default_color() {
-        area.color_hex
+        area.color_hex.clone()
     } else {
         default_color()
     }

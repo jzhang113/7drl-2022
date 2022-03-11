@@ -49,12 +49,25 @@ pub fn draw_missions(ecs: &World, ctx: &mut Rltk, selected_idx: usize) {
         }
     }
 
+    use crate::quest::builder;
     let mut rng = ecs.fetch_mut::<rltk::RandomNumberGenerator>();
-    let area_info = crate::quest::builder::QuestBuilder::build_area(&mut rng);
+    let quest = builder::build(&mut rng);
 
-    ctx.print(book_x + 1, book_y + 20, "Hunting Quest");
-    ctx.print(book_x + 1, book_y + 22, "Hunting a Legiana");
-    ctx.print(book_x + 1, book_y + 24, "Reward Money: 120z");
-    ctx.print(book_x + 1, book_y + 26, "Time Limit: 300 turns");
-    ctx.print(book_x + 1, book_y + 28, area_info.name);
+    ctx.print(
+        book_x + 1,
+        book_y + 20,
+        builder::quest_type_name(quest.quest_type),
+    );
+    ctx.print(book_x + 1, book_y + 22, quest.get_name());
+    ctx.print(
+        book_x + 1,
+        book_y + 24,
+        format!("Reward Money: {}z", quest.reward),
+    );
+    ctx.print(
+        book_x + 1,
+        book_y + 26,
+        format!("Time Limit: {} turns", quest.turn_limit),
+    );
+    ctx.print(book_x + 1, book_y + 28, quest.area_name);
 }
