@@ -36,6 +36,8 @@ pub fn draw_missions(
 
         ctx.print(book_x + 1, row, quest.get_name());
 
+        ctx.print(book_x + 30, row, format!("{} days", quest.days_remaining));
+
         if quest.completed {
             ctx.print(book_x + 40, row, "Completed!");
         }

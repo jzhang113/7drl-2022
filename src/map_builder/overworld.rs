@@ -41,9 +41,9 @@ impl MapBuilder for OverworldBuilder {
 }
 
 impl OverworldBuilder {
-    pub fn new(rng: &mut rltk::RandomNumberGenerator) -> Self {
+    pub fn new(args: map_builder::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(30, 30, 0, "#D4BF8E".to_string(), rng),
+            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
             history: Vec::new(),
         }

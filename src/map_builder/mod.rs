@@ -45,14 +45,16 @@ pub fn with_builder(args: MapBuilderArgs) -> Box<dyn MapBuilder> {
 }
 
 fn get_builder(args: MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Box<dyn MapBuilder> {
-    let builder = match args.builder_type {
+    match args.builder_type {
         //1 => Box::new(BspDungeonBuilder::new(new_depth)),
         // 2 => Box::new(BspInteriorBuilder::new(new_depth)),
         // 3 => Box::new(CellularAutomataBuilder::new(new_depth)),
-        1 => drunk_walk::DrunkardsWalkBuilder::open_area(args, rng),
-        2 => drunk_walk::DrunkardsWalkBuilder::open_halls(args, rng),
-        _ => drunk_walk::DrunkardsWalkBuilder::winding_passages(args, rng), //_ => Box::new(SimpleMapBuilder::new(new_depth)),
-    };
-
-    Box::new(builder)
+        1 => Box::new(drunk_walk::DrunkardsWalkBuilder::open_area(args, rng)),
+        2 => Box::new(drunk_walk::DrunkardsWalkBuilder::open_halls(args, rng)),
+        4 => Box::new(overworld::OverworldBuilder::new(args, rng)),
+        _ => Box::new(drunk_walk::DrunkardsWalkBuilder::winding_passages(
+            args, rng,
+        )),
+        //_ => Box::new(SimpleMapBuilder::new(new_depth)),
+    }
 }

@@ -116,7 +116,7 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
         RunState::Dead => {
             // restart
             ctx.print_color(x, y, icon_color, bg_color, "r");
-            ctx.print(x + 1, y, "estart");
+            ctx.print(x + 1, y, "eturn to base");
             ctx.print_color(CONSOLE_WIDTH - 6, y, text_dead_color(), bg_color, " DEAD");
         }
         RunState::HitPause { .. } => {

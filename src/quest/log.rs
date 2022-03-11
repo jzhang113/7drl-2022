@@ -32,6 +32,16 @@ impl QuestLog {
 
         self.entries.push(quest);
     }
+
+    pub fn advance_day(&mut self) {
+        // remove all quests that have no days remaining
+        self.entries.retain(|quest| quest.days_remaining > 1);
+
+        // update the days on the remaining quests
+        for quest in self.entries.iter_mut() {
+            quest.days_remaining -= 1;
+        }
+    }
 }
 
 fn random_target(rng: &mut rltk::RandomNumberGenerator) -> Vec<String> {

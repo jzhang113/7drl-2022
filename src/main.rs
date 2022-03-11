@@ -122,29 +122,25 @@ impl State {
         self.ecs.insert(sys_particle::ParticleBuilder::new());
 
         let mut rng = rltk::RandomNumberGenerator::new();
-        let mut map_builder = // map_builder::random_builder(camera::MAP_W, camera::MAP_H, 1);
-            map_builder::overworld::OverworldBuilder::new(&mut rng);
 
-        map_builder.build_map(&mut rng);
+        // Add a dummy map and player to the ecs
+        let map = Map::new(1, 1, 1, "#FFFFFF".to_string(), &mut rng);
+        self.ecs.insert(map);
+
+        let player = spawner::build_player(&mut self.ecs, rltk::Point::new(0, 0));
+        self.ecs.insert(player);
+
         for _ in 0..3 {
             self.quests.add_quest(&mut rng);
         }
         self.ecs.insert(rng);
 
-        let mut map = map_builder.get_map();
-        let player_pos = map_builder.get_starting_position().as_point();
-        let player = spawner::build_player(&mut self.ecs, player_pos);
-        let player_index = map.point2d_to_index(player_pos);
-        map.track_creature(player, player_index, None);
-
-        self.ecs.insert(map);
-        self.ecs.insert(player);
-        map_builder.spawn_entities(&mut self.ecs);
-
         let log = gamelog::GameLog {
             entries: vec!["Hello world!".to_string()],
         };
         self.ecs.insert(log);
+
+        self.load_overworld();
     }
 
     fn run_systems(&mut self) -> RunState {
@@ -251,7 +247,17 @@ impl State {
         new_map_builder.spawn_entities(&mut self.ecs);
     }
 
-    fn new_level(&mut self, quest: quest::quest::Quest) {
+    fn load_overworld(&mut self) {
+        self.new_level(map_builder::MapBuilderArgs {
+            builder_type: 4,
+            width: 30,
+            height: 30,
+            depth: 0,
+            map_color: "#D4BF8E".to_string(),
+        })
+    }
+
+    fn new_level(&mut self, map_builder_args: map_builder::MapBuilderArgs) {
         // Delete entities that aren't the player or his/her equipment
         let to_delete = self.entities_need_cleanup();
         for target in to_delete {
@@ -260,7 +266,7 @@ impl State {
                 .expect("Unable to delete entity");
         }
 
-        let mut map_builder = map_builder::with_builder(quest.map_builder_args);
+        let mut map_builder = map_builder::with_builder(map_builder_args);
         let new_map = {
             let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
             map_builder.build_map(&mut rng)
@@ -292,6 +298,23 @@ impl State {
 
         // fill the map
         map_builder.spawn_entities(&mut self.ecs);
+    }
+
+    fn reset_player(&mut self) {
+        let player = self.ecs.fetch::<Entity>();
+        let mut healths = self.ecs.write_storage::<Health>();
+        let mut player_healths = healths
+            .get_mut(*player)
+            .expect("player didn't have a health");
+
+        player_healths.current = player_healths.max;
+    }
+
+    fn advance_day(&mut self) {
+        let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
+
+        self.quests.advance_day();
+        self.quests.add_quest(&mut rng);
     }
 }
 
@@ -416,7 +439,7 @@ impl GameState for State {
                     next_status = RunState::AwaitingInput;
                 }
                 Some(quest) => {
-                    self.new_level(quest);
+                    self.new_level(quest.map_builder_args);
                     sys_visibility::VisibilitySystem.run_now(&self.ecs);
                     next_status = RunState::AwaitingInput;
                 }
@@ -434,6 +457,8 @@ impl GameState for State {
                     None => {}
                     Some(key) => {
                         if key == rltk::VirtualKeyCode::R {
+                            self.load_overworld();
+                            self.reset_player();
                             next_status = RunState::Running;
                         }
                     }
@@ -441,6 +466,13 @@ impl GameState for State {
             }
             RunState::MissionSelect { index } => {
                 gui::overworld::draw_missions(ctx, &self.quests, &self.selected_quest, index);
+
+                if let Some(key) = ctx.key {
+                    if key == rltk::VirtualKeyCode::V {
+                        self.advance_day();
+                    }
+                }
+
                 next_status = player::mission_select_input(self, ctx, index);
             }
             RunState::Shop => match ctx.key {
