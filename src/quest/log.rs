@@ -45,5 +45,10 @@ impl QuestLog {
 }
 
 fn random_target(rng: &mut rltk::RandomNumberGenerator) -> Vec<String> {
-    vec!["Legiana".to_string(), "Diablos".to_string()]
+    vec![
+        "Legiana".to_string(),
+        "Diablos".to_string(),
+        "Rajang".to_string(),
+        "Bazelgeuse".to_string(),
+    ]
 }

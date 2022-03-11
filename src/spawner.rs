@@ -121,6 +121,10 @@ pub fn build_player(ecs: &mut World, point: Point) -> Entity {
             current: 10,
             max: 10,
         })
+        .with(Stamina {
+            current: 10,
+            max: 10,
+        })
         .build()
 }
 // #endregion

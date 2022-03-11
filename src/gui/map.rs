@@ -8,9 +8,6 @@ pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
     draw_renderables(ecs, ctx);
     // draw_blocked_tiles(ecs, ctx);
     draw_attacks_in_progress(ecs, ctx);
-
-    // non-map elements
-    super::sidebar::draw_sidebar(ecs, ctx);
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {

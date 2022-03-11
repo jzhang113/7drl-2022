@@ -1,17 +1,5 @@
 use rltk::{RandomNumberGenerator, HSV, RGB};
 
-pub fn card_priority_color() -> RGB {
-    RGB::named(rltk::GREEN)
-}
-
-pub fn card_interrupted_color() -> RGB {
-    RGB::named(rltk::RED)
-}
-
-pub fn card_blocked_color() -> RGB {
-    RGB::named(rltk::ORANGE)
-}
-
 pub fn bg_color() -> RGB {
     RGB::named(rltk::BLACK)
 }
@@ -28,16 +16,28 @@ pub fn hp_alt_color() -> RGB {
     RGB::named(rltk::DARKRED)
 }
 
-pub fn card_select_color() -> RGB {
+pub fn stam_main_color() -> RGB {
     RGB::named(rltk::GOLD)
+}
+
+pub fn stam_alt_color() -> RGB {
+    RGB::named(rltk::DARKGOLDENROD)
 }
 
 pub fn select_highlight_color() -> RGB {
     RGB::named(rltk::GOLD)
 }
 
+pub fn select_text_color() -> RGB {
+    RGB::named(rltk::BLACK)
+}
+
 pub fn text_highlight_color() -> RGB {
     RGB::named(rltk::GOLD)
+}
+
+pub fn text_color() -> RGB {
+    RGB::named(rltk::WHITE)
 }
 
 pub fn text_inactive_color() -> RGB {

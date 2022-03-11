@@ -83,7 +83,7 @@ impl OverworldBuilder {
 }
 
 fn add_npc(ecs: &mut World) {
-    spawner::build_npc_blacksmith(ecs, rltk::Point::new(20, 5));
+    spawner::build_npc_blacksmith(ecs, rltk::Point::new(15, 5));
     spawner::build_npc_shopkeeper(ecs, rltk::Point::new(5, 5));
-    spawner::build_npc_handler(ecs, rltk::Point::new(20, 20));
+    spawner::build_npc_handler(ecs, rltk::Point::new(15, 15));
 }

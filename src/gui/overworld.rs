@@ -7,9 +7,9 @@ pub fn draw_missions(
     current_quest: &Option<quest::Quest>,
     selected_idx: usize,
 ) {
-    let book_x = 5;
-    let book_y = 5;
-    let book_page_w = 30;
+    let book_x = 8;
+    let book_y = 6;
+    let book_page_w = 40;
     let book_page_h = 40;
 
     ctx.draw_box(
@@ -29,50 +29,101 @@ pub fn draw_missions(
         RGB::named(rltk::BLACK),
     );
 
-    ctx.print(book_x + 5, book_y + 2, "Select Mission");
+    let header = "Select Quest";
+    ctx.print(
+        book_x + (book_page_w - header.len()) / 2,
+        book_y + 2,
+        header,
+    );
 
     for (i, quest) in quest_log.entries.iter().enumerate() {
         let row = book_y + 4 + 2 * i;
-
-        ctx.print(book_x + 1, row, quest.get_name());
-
-        ctx.print(book_x + 30, row, format!("{} days", quest.days_remaining));
-
-        if quest.completed {
-            ctx.print(book_x + 40, row, "Completed!");
-        }
-
-        if current_quest.as_ref().map_or(false, |q| q == quest) {
-            ctx.print(book_x + 40, row, "Assigned!");
-        }
+        let mut text_color = crate::text_color();
 
         if i == selected_idx {
             ctx.set_active_console(0);
-            for dx in 0..40 {
-                ctx.set_bg(book_x + 1 + dx, row, RGB::named(rltk::YELLOW));
+            for dx in 0..book_page_w - 1 {
+                ctx.set_bg(book_x + 1 + dx, row, crate::select_highlight_color());
             }
             ctx.set_active_console(1);
+
+            text_color = crate::select_text_color();
         }
+
+        if current_quest.as_ref().map_or(false, |q| q == quest) {
+            let assigned_str = "Assigned!";
+            ctx.print_color(
+                book_x + book_page_w - assigned_str.len(),
+                row,
+                text_color,
+                crate::bg_color(),
+                assigned_str,
+            );
+        } else if quest.completed {
+            let complete_str = "Completed!";
+            ctx.print_color(
+                book_x + book_page_w - complete_str.len(),
+                row,
+                crate::text_success_color(),
+                crate::bg_color(),
+                complete_str,
+            );
+        } else {
+            let remaining_str = format!("{} days left", quest.days_remaining);
+            ctx.print_color(
+                book_x + book_page_w - remaining_str.len(),
+                row,
+                text_color,
+                crate::bg_color(),
+                remaining_str,
+            );
+        }
+
+        let mut quest_name = quest.get_name();
+        let quest_max_len = book_page_w - 11 - 2;
+        if quest_name.len() > quest_max_len {
+            quest_name.truncate(quest_max_len);
+            quest_name.replace_range((quest_max_len - 3)..quest_max_len, "...");
+        }
+        ctx.print_color(book_x + 1, row, text_color, crate::bg_color(), quest_name);
     }
 
     if selected_idx < quest_log.entries.len() {
         let quest = &quest_log.entries[selected_idx];
         ctx.print(
             book_x + 1,
-            book_y + 20,
+            book_y + book_page_h - 7,
             quest::quest_type_name(quest.quest_type),
         );
-        ctx.print(book_x + 1, book_y + 22, quest.get_name());
+        ctx.print(book_x + 1, book_y + book_page_h - 5, "Hunt all targets");
         ctx.print(
             book_x + 1,
-            book_y + 24,
+            book_y + book_page_h - 3,
             format!("Reward Money: {}z", quest.reward),
         );
         ctx.print(
             book_x + 1,
-            book_y + 26,
+            book_y + book_page_h - 1,
             format!("Time Limit: {} turns", quest.turn_limit),
         );
-        ctx.print(book_x + 1, book_y + 28, quest.area_name.clone());
+
+        ctx.print(
+            book_x + book_page_w + 2,
+            book_y + 2,
+            quest.area_name.clone(),
+        );
+
+        ctx.print(
+            book_x + book_page_w + 2,
+            book_y + book_page_h - 2 * quest.quest_targets.len() - 1,
+            "Targets:",
+        );
+        for (i, name) in quest.quest_targets.iter().enumerate() {
+            ctx.print(
+                book_x + book_page_w + 3,
+                book_y + book_page_h - 2 * i - 1,
+                name,
+            );
+        }
     }
 }

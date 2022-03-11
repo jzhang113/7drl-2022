@@ -100,6 +100,7 @@ impl State {
         self.ecs.register::<ViewableIndex>();
 
         self.ecs.register::<Health>();
+        self.ecs.register::<Stamina>();
         self.ecs.register::<AttackIntent>();
         self.ecs.register::<MoveIntent>();
         self.ecs.register::<PartMoveIntent>();
@@ -254,8 +255,8 @@ impl State {
     fn load_overworld(&mut self) {
         self.new_level(MapBuilderArgs {
             builder_type: 4,
-            width: 30,
-            height: 30,
+            width: 20,
+            height: 20,
             depth: 0,
             map_color: "#D4BF8E".to_string(),
         })
@@ -362,10 +363,13 @@ impl GameState for State {
 
         // draw map + gui
         match next_status {
-            RunState::MissionSelect { .. } => {}
+            // RunState::MissionSelect { .. } => {}
             RunState::Shop => {}
             _ => gui::map::draw_all(&self.ecs, ctx),
         };
+
+        // non-map elements
+        gui::sidebar::draw_sidebar(&self.ecs, ctx, &self.selected_quest);
 
         match next_status {
             RunState::AwaitingInput => {

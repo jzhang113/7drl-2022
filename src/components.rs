@@ -63,6 +63,12 @@ pub struct Health {
     pub max: i32,
 }
 
+#[derive(Component)]
+pub struct Stamina {
+    pub current: i32,
+    pub max: i32,
+}
+
 #[derive(Component, Copy, Clone)]
 pub struct AttackIntent {
     pub main: crate::AttackType,
