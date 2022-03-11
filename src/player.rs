@@ -152,7 +152,7 @@ fn handle_keys(
             }
             VirtualKeyCode::D => {
                 // TODO: For testing, remove
-                return RunState::Dead;
+                return RunState::Dead { success: true };
             }
             VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
             _ => RunState::AwaitingInput,
@@ -345,12 +345,14 @@ pub fn mission_select_input(gs: &mut State, ctx: &mut Rltk, index: usize) -> Run
                 new_index += 1;
             }
             VirtualKeyCode::Escape => {
-                gs.selected_quest = None;
                 return RunState::Running;
             }
             VirtualKeyCode::Space | VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
                 gs.selected_quest = Some(gs.quests.entries[index].clone());
                 return RunState::Running;
+            }
+            VirtualKeyCode::C => {
+                gs.selected_quest = None;
             }
             _ => {}
         },

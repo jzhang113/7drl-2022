@@ -113,11 +113,28 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
             ctx.print_color(escape_section_x, y, icon_color, bg_color, "[ESC]");
             ctx.print(escape_section_x + 6, y, "cancel");
         }
-        RunState::Dead => {
+        RunState::Dead { success } => {
             // restart
             ctx.print_color(x, y, icon_color, bg_color, "r");
             ctx.print(x + 1, y, "eturn to base");
-            ctx.print_color(CONSOLE_WIDTH - 6, y, text_dead_color(), bg_color, " DEAD");
+
+            if success {
+                ctx.print_color(
+                    CONSOLE_WIDTH - 14,
+                    y,
+                    text_success_color(),
+                    bg_color,
+                    "QUEST COMPLETE",
+                );
+            } else {
+                ctx.print_color(
+                    CONSOLE_WIDTH - 12,
+                    y,
+                    text_failed_color(),
+                    bg_color,
+                    "QUEST FAILED",
+                );
+            }
         }
         RunState::HitPause { .. } => {
             ctx.print_color(CONSOLE_WIDTH - 6, y, inactive_color, bg_color, " WAIT");

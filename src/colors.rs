@@ -44,8 +44,12 @@ pub fn text_inactive_color() -> RGB {
     RGB::named(rltk::GREY)
 }
 
-pub fn text_dead_color() -> RGB {
+pub fn text_failed_color() -> RGB {
     RGB::named(rltk::RED)
+}
+
+pub fn text_success_color() -> RGB {
+    RGB::named(rltk::GREEN)
 }
 
 pub fn map_floor_color() -> RGB {

@@ -4,8 +4,8 @@ extern crate lazy_static;
 rltk::embedded_resource!(FONT, "../resources/Zilk-16x16.png");
 rltk::embedded_resource!(ICONS, "../resources/custom_icons.png");
 
-use crate::map_builder::MapBuilder;
-use rltk::{Algorithm2D, GameState, Rltk, RGB};
+use crate::map_builder::MapBuilderArgs;
+use rltk::{GameState, Rltk, RGB};
 use specs::prelude::*;
 
 mod attack_type;
@@ -16,6 +16,7 @@ mod data;
 mod direction;
 mod gamelog;
 mod gui;
+mod inventory;
 mod map;
 mod map_builder;
 mod monster_part;
@@ -67,7 +68,9 @@ pub enum RunState {
         index: usize,
     },
     Shop,
-    Dead,
+    Dead {
+        success: bool,
+    },
 }
 
 pub struct State {
@@ -79,6 +82,7 @@ pub struct State {
     attack_modifier: Option<AttackType>,
     quests: quest::log::QuestLog,
     selected_quest: Option<quest::quest::Quest>,
+    player_inventory: inventory::Inventory,
 }
 
 impl State {
@@ -248,7 +252,7 @@ impl State {
     }
 
     fn load_overworld(&mut self) {
-        self.new_level(map_builder::MapBuilderArgs {
+        self.new_level(MapBuilderArgs {
             builder_type: 4,
             width: 30,
             height: 30,
@@ -257,7 +261,7 @@ impl State {
         })
     }
 
-    fn new_level(&mut self, map_builder_args: map_builder::MapBuilderArgs) {
+    fn new_level(&mut self, map_builder_args: MapBuilderArgs) {
         // Delete entities that aren't the player or his/her equipment
         let to_delete = self.entities_need_cleanup();
         for target in to_delete {
@@ -315,6 +319,17 @@ impl State {
 
         self.quests.advance_day();
         self.quests.add_quest(&mut rng);
+    }
+
+    fn apply_rewards(&mut self) {
+        if let Some(quest) = &self.selected_quest {
+            self.player_inventory.money += quest.reward;
+
+            let log_quest = self.quests.entries.iter_mut().find(|q| q == &quest);
+            if let Some(mut log_quest) = log_quest {
+                log_quest.completed = true;
+            }
+        }
     }
 }
 
@@ -450,7 +465,7 @@ impl GameState for State {
                 sys_visibility::VisibilitySystem.run_now(&self.ecs);
                 next_status = RunState::AwaitingInput;
             }
-            RunState::Dead => {
+            RunState::Dead { success } => {
                 gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
 
                 match ctx.key {
@@ -459,6 +474,14 @@ impl GameState for State {
                         if key == rltk::VirtualKeyCode::R {
                             self.load_overworld();
                             self.reset_player();
+
+                            if success {
+                                self.apply_rewards();
+                                self.selected_quest = None;
+                            }
+
+                            self.advance_day();
+
                             next_status = RunState::Running;
                         }
                     }
@@ -527,6 +550,7 @@ fn main() -> rltk::BError {
         attack_modifier: None,
         quests: quest::log::QuestLog::new(),
         selected_quest: None,
+        player_inventory: inventory::Inventory::new(),
     };
 
     gs.new_game();

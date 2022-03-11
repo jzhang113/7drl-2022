@@ -4,10 +4,10 @@ pub struct Quest {
     pub quest_targets: Vec<String>,
     pub area_name: String,
     pub map_builder_args: crate::map_builder::MapBuilderArgs,
-    pub reward: i32,
-    pub turn_limit: i32,
+    pub reward: u32,
+    pub turn_limit: u32,
     pub completed: bool,
-    pub days_remaining: i32,
+    pub days_remaining: u8,
 }
 
 impl Quest {

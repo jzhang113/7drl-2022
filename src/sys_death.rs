@@ -27,7 +27,7 @@ impl<'a> System<'a> for DeathSystem {
                     dead.push(ent);
                     map.untrack_creature(pos_index, multis);
                 } else {
-                    *run_state = crate::RunState::Dead;
+                    *run_state = crate::RunState::Dead { success: false };
                 }
             }
         }
