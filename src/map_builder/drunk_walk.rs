@@ -63,32 +63,25 @@ impl MapBuilder for DrunkardsWalkBuilder {
 impl DrunkardsWalkBuilder {
     #[allow(dead_code)]
     pub fn new(
-        width: i32,
-        height: i32,
-        depth: i32,
+        args: super::MapBuilderArgs,
         rng: &mut rltk::RandomNumberGenerator,
         settings: DrunkardSettings,
     ) -> Self {
         Self {
-            map: Map::new(width, height, depth, rng),
+            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth,
+            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings,
         }
     }
 
-    pub fn open_area(
-        width: i32,
-        height: i32,
-        depth: i32,
-        rng: &mut rltk::RandomNumberGenerator,
-    ) -> Self {
+    pub fn open_area(args: super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(width, height, depth, rng),
+            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth,
+            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {
@@ -100,16 +93,11 @@ impl DrunkardsWalkBuilder {
         }
     }
 
-    pub fn open_halls(
-        width: i32,
-        height: i32,
-        depth: i32,
-        rng: &mut rltk::RandomNumberGenerator,
-    ) -> Self {
+    pub fn open_halls(args: super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(width, height, depth, rng),
+            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth,
+            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {
@@ -122,15 +110,13 @@ impl DrunkardsWalkBuilder {
     }
 
     pub fn winding_passages(
-        width: i32,
-        height: i32,
-        depth: i32,
+        args: super::MapBuilderArgs,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> Self {
         Self {
-            map: Map::new(width, height, depth, rng),
+            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth,
+            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {

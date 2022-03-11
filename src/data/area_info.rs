@@ -18,7 +18,7 @@ pub struct AreaInfo {
     pub map_type: usize,
 
     #[serde(default = "default_color")]
-    pub color_hex: String,
+    pub color: String,
 }
 
 fn default_color() -> String {
@@ -51,7 +51,7 @@ pub fn get_random_area(rng: &mut rltk::RandomNumberGenerator) -> AreaInfo {
     AreaInfo {
         name: get_combined_name(&prefix_info, &area_info),
         map_type: get_combined_generator(&prefix_info, &area_info),
-        color_hex: get_combined_color(&prefix_info, &area_info),
+        color: get_combined_color(&prefix_info, &area_info),
     }
 }
 
@@ -70,10 +70,10 @@ fn get_combined_generator(prefix: &AreaInfo, area: &AreaInfo) -> usize {
 }
 
 fn get_combined_color(prefix: &AreaInfo, area: &AreaInfo) -> String {
-    if prefix.color_hex != default_color() {
-        prefix.color_hex.clone()
-    } else if area.color_hex != default_color() {
-        area.color_hex.clone()
+    if prefix.color != default_color() {
+        prefix.color.clone()
+    } else if area.color != default_color() {
+        area.color.clone()
     } else {
         default_color()
     }

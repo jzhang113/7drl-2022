@@ -14,38 +14,44 @@ pub trait MapBuilder {
     fn take_snapshot(&mut self);
 }
 
+#[derive(Clone, PartialEq)]
+pub struct MapBuilderArgs {
+    pub width: i32,
+    pub height: i32,
+    pub depth: i32,
+    pub builder_type: usize,
+    pub map_color: String,
+}
+
 pub fn random_builder(width: i32, height: i32, depth: i32) -> Box<dyn MapBuilder> {
     let mut rng = rltk::RandomNumberGenerator::new();
     let builder_type = rng.roll_dice(1, 3);
     println!("Building map type {}", builder_type);
-    get_builder(builder_type as usize, width, height, depth, &mut rng)
+    get_builder(
+        MapBuilderArgs {
+            builder_type: builder_type as usize,
+            width,
+            height,
+            depth,
+            map_color: "#FFFFFF".to_string(),
+        },
+        &mut rng,
+    )
 }
 
-pub fn with_builder(
-    builder_type: usize,
-    width: i32,
-    height: i32,
-    depth: i32,
-) -> Box<dyn MapBuilder> {
+pub fn with_builder(args: MapBuilderArgs) -> Box<dyn MapBuilder> {
     let mut rng = rltk::RandomNumberGenerator::new();
-    get_builder(builder_type, width, height, depth, &mut rng)
+    get_builder(args, &mut rng)
 }
 
-fn get_builder(
-    builder_type: usize,
-    width: i32,
-    height: i32,
-    depth: i32,
-    rng: &mut rltk::RandomNumberGenerator,
-) -> Box<dyn MapBuilder> {
-    let builder = match builder_type {
+fn get_builder(args: MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Box<dyn MapBuilder> {
+    let builder = match args.builder_type {
         //1 => Box::new(BspDungeonBuilder::new(new_depth)),
         // 2 => Box::new(BspInteriorBuilder::new(new_depth)),
         // 3 => Box::new(CellularAutomataBuilder::new(new_depth)),
-        1 => drunk_walk::DrunkardsWalkBuilder::open_area(width, height, depth, rng),
-        2 => drunk_walk::DrunkardsWalkBuilder::open_halls(width, height, depth, rng),
-        _ => drunk_walk::DrunkardsWalkBuilder::winding_passages(width, height, depth, rng),
-        //_ => Box::new(SimpleMapBuilder::new(new_depth)),
+        1 => drunk_walk::DrunkardsWalkBuilder::open_area(args, rng),
+        2 => drunk_walk::DrunkardsWalkBuilder::open_halls(args, rng),
+        _ => drunk_walk::DrunkardsWalkBuilder::winding_passages(args, rng), //_ => Box::new(SimpleMapBuilder::new(new_depth)),
     };
 
     Box::new(builder)

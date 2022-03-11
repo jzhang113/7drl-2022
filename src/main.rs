@@ -61,7 +61,8 @@ pub enum RunState {
     HitPause {
         remaining_time: f32,
     },
-    GenerateMap,
+    GenerateLevel,
+    ChangeMap,
     MissionSelect {
         index: usize,
     },
@@ -76,6 +77,8 @@ pub struct State {
     tab_targets: Vec<rltk::Point>,
     tab_index: usize,
     attack_modifier: Option<AttackType>,
+    quests: quest::log::QuestLog,
+    selected_quest: Option<quest::quest::Quest>,
 }
 
 impl State {
@@ -123,6 +126,9 @@ impl State {
             map_builder::overworld::OverworldBuilder::new(&mut rng);
 
         map_builder.build_map(&mut rng);
+        for _ in 0..3 {
+            self.quests.add_quest(&mut rng);
+        }
         self.ecs.insert(rng);
 
         let mut map = map_builder.get_map();
@@ -244,6 +250,49 @@ impl State {
         // fill the map
         new_map_builder.spawn_entities(&mut self.ecs);
     }
+
+    fn new_level(&mut self, quest: quest::quest::Quest) {
+        // Delete entities that aren't the player or his/her equipment
+        let to_delete = self.entities_need_cleanup();
+        for target in to_delete {
+            self.ecs
+                .delete_entity(target)
+                .expect("Unable to delete entity");
+        }
+
+        let mut map_builder = map_builder::with_builder(quest.map_builder_args);
+        let new_map = {
+            let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
+            map_builder.build_map(&mut rng)
+        };
+
+        {
+            // update player position
+            let player = self.ecs.fetch::<Entity>();
+            let mut positions = self.ecs.write_storage::<Position>();
+            let mut player_pos = positions
+                .get_mut(*player)
+                .expect("player didn't have a position");
+
+            let new_player_pos = map_builder.get_starting_position();
+            player_pos.x = new_player_pos.x;
+            player_pos.y = new_player_pos.y;
+
+            // Mark the player's visibility as dirty
+            let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
+            let vs = viewshed_components.get_mut(*player);
+            if let Some(vs) = vs {
+                vs.dirty = true;
+            }
+
+            // replace map
+            let mut map_writer = self.ecs.write_resource::<Map>();
+            *map_writer = new_map;
+        }
+
+        // fill the map
+        map_builder.spawn_entities(&mut self.ecs);
+    }
 }
 
 impl GameState for State {
@@ -361,7 +410,18 @@ impl GameState for State {
                     }
                 }
             }
-            RunState::GenerateMap => {
+            RunState::GenerateLevel => match self.selected_quest.take() {
+                None => {
+                    println!("You need to select a quest first");
+                    next_status = RunState::AwaitingInput;
+                }
+                Some(quest) => {
+                    self.new_level(quest);
+                    sys_visibility::VisibilitySystem.run_now(&self.ecs);
+                    next_status = RunState::AwaitingInput;
+                }
+            },
+            RunState::ChangeMap => {
                 self.change_level();
                 // update visibility immediately so the screen isn't dark for a cycle
                 sys_visibility::VisibilitySystem.run_now(&self.ecs);
@@ -380,27 +440,8 @@ impl GameState for State {
                 }
             }
             RunState::MissionSelect { index } => {
-                gui::overworld::draw_missions(&self.ecs, ctx, index);
-
-                match ctx.key {
-                    None => {}
-                    Some(key) => {
-                        if key == rltk::VirtualKeyCode::Escape {
-                            next_status = RunState::Running;
-                        } else if key == rltk::VirtualKeyCode::B {
-                            let new_world = World::new();
-                            self.ecs = new_world;
-                            self.new_game();
-                            next_status = RunState::Running;
-                        } else if key == rltk::VirtualKeyCode::Up {
-                            if index > 0 {
-                                next_status = RunState::MissionSelect { index: index - 1 };
-                            }
-                        } else if key == rltk::VirtualKeyCode::Down {
-                            next_status = RunState::MissionSelect { index: index + 1 };
-                        }
-                    }
-                }
+                gui::overworld::draw_missions(ctx, &self.quests, &self.selected_quest, index);
+                next_status = player::mission_select_input(self, ctx, index);
             }
             RunState::Shop => match ctx.key {
                 None => {}
@@ -423,7 +464,7 @@ fn main() -> rltk::BError {
     rltk::link_resource!(ICONS, "resources/custom_icons.png");
 
     let context = RltkBuilder::simple(gui::consts::CONSOLE_WIDTH, gui::consts::CONSOLE_HEIGHT)?
-        .with_title("counterpuncher")
+        .with_title("mhrl")
         .with_font("Zilk-16x16.png", 16, 16)
         .with_font("custom_icons.png", 16, 16)
         .with_tile_dimensions(16, 16)
@@ -452,6 +493,8 @@ fn main() -> rltk::BError {
         tab_targets: Vec::new(),
         tab_index: 0,
         attack_modifier: None,
+        quests: quest::log::QuestLog::new(),
+        selected_quest: None,
     };
 
     gs.new_game();

@@ -43,7 +43,7 @@ impl MapBuilder for OverworldBuilder {
 impl OverworldBuilder {
     pub fn new(rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(30, 30, 0, rng),
+            map: Map::new(30, 30, 0, "#D4BF8E".to_string(), rng),
             starting_position: Position { x: 0, y: 0 },
             history: Vec::new(),
         }
@@ -72,7 +72,7 @@ impl OverworldBuilder {
 
         for y in (self.map.height * 2 / 5)..(self.map.height * 3 / 5) {
             let exit_index = self.map.get_index(self.map.width - 2, y);
-            self.map.tiles[exit_index] = TileType::DownStairs;
+            self.map.tiles[exit_index] = TileType::NewLevel;
 
             let exit_index = self.map.get_index(self.map.width - 1, y);
             self.map.tiles[exit_index] = TileType::Floor;

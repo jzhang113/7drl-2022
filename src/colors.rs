@@ -53,10 +53,14 @@ pub fn map_floor_color() -> RGB {
     hsv.to_rgb()
 }
 
-pub fn map_wall_color(rng: &mut RandomNumberGenerator) -> RGB {
-    let hue_change = 0.25 * (rng.rand::<f32>() - 0.2);
-    let sat_change = 0.1 * (rng.rand::<f32>() - 0.5);
-    let hsv = HSV::from_f32(0.05 + hue_change, 0.25 + sat_change, 0.6);
+pub fn map_wall_variant(base_color: HSV, rng: &mut RandomNumberGenerator) -> RGB {
+    let hue_change = 0.12 * (rng.rand::<f32>() - 0.5);
+    let sat_change = 0.2 * (rng.rand::<f32>() - 0.5);
+    let hsv = HSV::from_f32(
+        base_color.h + hue_change,
+        base_color.s + sat_change,
+        base_color.v,
+    );
     hsv.to_rgb()
 }
 

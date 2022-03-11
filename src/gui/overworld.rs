@@ -1,9 +1,12 @@
+use crate::quest::*;
 use rltk::{Rltk, RGB};
-use specs::World;
 
-pub fn draw_missions(ecs: &World, ctx: &mut Rltk, selected_idx: usize) {
-    ctx.print(1, 1, "Hello overmap");
-
+pub fn draw_missions(
+    ctx: &mut Rltk,
+    quest_log: &log::QuestLog,
+    current_quest: &Option<quest::Quest>,
+    selected_idx: usize,
+) {
     let book_x = 5;
     let book_y = 5;
     let book_page_w = 30;
@@ -26,19 +29,20 @@ pub fn draw_missions(ecs: &World, ctx: &mut Rltk, selected_idx: usize) {
         RGB::named(rltk::BLACK),
     );
 
-    let mission_list = vec![
-        "Back to Basics",
-        "Learning to Ride",
-        "The Basics of Capturing Monsters",
-        "The Rampage Approaches",
-    ];
     ctx.print(book_x + 5, book_y + 2, "Select Mission");
 
-    for i in 0..mission_list.len() {
+    for (i, quest) in quest_log.entries.iter().enumerate() {
         let row = book_y + 4 + 2 * i;
 
-        ctx.print(book_x + 1, row, mission_list[i]);
-        ctx.print(book_x + 40, row, "Completed!");
+        ctx.print(book_x + 1, row, quest.get_name());
+
+        if quest.completed {
+            ctx.print(book_x + 40, row, "Completed!");
+        }
+
+        if current_quest.as_ref().map_or(false, |q| q == quest) {
+            ctx.print(book_x + 40, row, "Assigned!");
+        }
 
         if i == selected_idx {
             ctx.set_active_console(0);
@@ -49,25 +53,24 @@ pub fn draw_missions(ecs: &World, ctx: &mut Rltk, selected_idx: usize) {
         }
     }
 
-    use crate::quest::builder;
-    let mut rng = ecs.fetch_mut::<rltk::RandomNumberGenerator>();
-    let quest = builder::build(&mut rng);
-
-    ctx.print(
-        book_x + 1,
-        book_y + 20,
-        builder::quest_type_name(quest.quest_type),
-    );
-    ctx.print(book_x + 1, book_y + 22, quest.get_name());
-    ctx.print(
-        book_x + 1,
-        book_y + 24,
-        format!("Reward Money: {}z", quest.reward),
-    );
-    ctx.print(
-        book_x + 1,
-        book_y + 26,
-        format!("Time Limit: {} turns", quest.turn_limit),
-    );
-    ctx.print(book_x + 1, book_y + 28, quest.area_name);
+    if selected_idx < quest_log.entries.len() {
+        let quest = &quest_log.entries[selected_idx];
+        ctx.print(
+            book_x + 1,
+            book_y + 20,
+            quest::quest_type_name(quest.quest_type),
+        );
+        ctx.print(book_x + 1, book_y + 22, quest.get_name());
+        ctx.print(
+            book_x + 1,
+            book_y + 24,
+            format!("Reward Money: {}z", quest.reward),
+        );
+        ctx.print(
+            book_x + 1,
+            book_y + 26,
+            format!("Time Limit: {} turns", quest.turn_limit),
+        );
+        ctx.print(book_x + 1, book_y + 28, quest.area_name.clone());
+    }
 }

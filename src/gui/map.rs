@@ -37,6 +37,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                 TileType::Floor => (rltk::to_cp437('.'), map_floor_color()),
                 TileType::Wall => (rltk::to_cp437('#'), map.color_map[idx]),
                 TileType::DownStairs => (rltk::to_cp437('>'), map_exit_color()),
+                TileType::NewLevel => (rltk::to_cp437('>'), map_exit_color()),
             };
 
             if !map.visible_tiles[idx] {

@@ -8,6 +8,7 @@ pub enum TileType {
     Wall,
     Floor,
     DownStairs,
+    NewLevel,
 }
 
 #[derive(Default, Clone)]
@@ -76,8 +77,23 @@ impl Algorithm2D for Map {
 }
 
 impl Map {
-    pub fn new(width: i32, height: i32, depth: i32, rng: &mut rltk::RandomNumberGenerator) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        depth: i32,
+        map_color: String,
+        rng: &mut rltk::RandomNumberGenerator,
+    ) -> Self {
         let dim = (width * height).try_into().unwrap();
+        let base_color = if map_color != "#FFFFFF" {
+            rltk::RGB::from_hex(map_color).unwrap().to_hsv()
+        } else {
+            rltk::HSV::from_f32(rng.rand::<f32>(), rng.rand::<f32>(), rng.rand::<f32>())
+        };
+        let color_map: Vec<rltk::RGB> = (0..dim)
+            .map(|_| crate::map_wall_variant(base_color, rng))
+            .collect();
+
         Self {
             tiles: vec![TileType::Wall; dim],
             rooms: vec![],
@@ -89,7 +105,7 @@ impl Map {
                 map_width: width,
                 map_height: height,
             },
-            color_map: (0..dim).map(|_| crate::map_wall_color(rng)).collect(),
+            color_map: color_map,
             item_map: HashMap::new(),
             creature_map: HashMap::new(),
             known_tiles: vec![false; dim],
