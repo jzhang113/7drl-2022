@@ -72,6 +72,25 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     RunState::AwaitingInput
 }
 
+fn try_move_charging(
+    gs: &mut State,
+    input_dir: crate::Direction,
+    movement_dir: crate::Direction,
+) -> RunState {
+    if input_dir == movement_dir {
+        return RunState::Running;
+    } else if input_dir == movement_dir.opp() {
+        gs.player_charging.1 = input_dir;
+        gs.player_charging.2 = 1;
+        return RunState::Running;
+    } else if input_dir == movement_dir.left() || input_dir == movement_dir.right() {
+        let dir_point = input_dir.to_point();
+        return try_move_player(&mut gs.ecs, dir_point.x, dir_point.y);
+    }
+
+    RunState::Running
+}
+
 fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
     let mut attacks = gs.ecs.write_storage::<AttackIntent>();
     let positions = gs.ecs.read_storage::<Position>();
@@ -140,7 +159,7 @@ fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
     }
 }
 
-fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
+fn handle_charging(gs: &mut State) -> bool {
     let player = gs.ecs.fetch::<Entity>();
     let map = gs.ecs.fetch::<Map>();
 
@@ -188,11 +207,11 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
                     .expect("Failed to insert new attack from player");
             }
 
-            return RunState::Running;
+            return false;
         }
 
         gs.player_inventory.weapon.reset();
-        return RunState::Running;
+        return false;
     }
 
     let new_move = MoveIntent {
@@ -207,7 +226,8 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
     if gs.player_charging.2 < 4 {
         gs.player_charging.2 += 1;
     }
-    return RunState::Running;
+
+    true
 }
 
 pub fn player_input(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunState {
@@ -222,7 +242,52 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) ->
     };
 
     if gs.player_charging.0 {
-        handle_charging(gs, ctx)
+        // check bool that auto-movement only happens once
+        if !gs.player_charging.3 {
+            let can_player_take_action = handle_charging(gs);
+
+            if !can_player_take_action {
+                return RunState::Running;
+            } else {
+                // process the movement once now before handling player input
+                sys_movement::MovementSystem.run_now(&gs.ecs);
+                gs.player_charging.3 = true;
+            }
+        }
+
+        let next_state = match ctx.key {
+            None => RunState::AwaitingInput,
+            Some(key) => match key {
+                VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
+                    try_move_charging(gs, crate::Direction::W, gs.player_charging.1)
+                }
+                VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
+                    try_move_charging(gs, crate::Direction::E, gs.player_charging.1)
+                }
+                VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
+                    try_move_charging(gs, crate::Direction::N, gs.player_charging.1)
+                }
+                VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
+                    try_move_charging(gs, crate::Direction::S, gs.player_charging.1)
+                }
+                VirtualKeyCode::Z => {
+                    let next_state = weapon_attack(gs, WeaponButton::Light);
+                    if next_state == RunState::Running {
+                        gs.player_charging.0 = false;
+                    }
+
+                    next_state
+                }
+                VirtualKeyCode::Period => RunState::Running,
+                _ => RunState::AwaitingInput,
+            },
+        };
+
+        if next_state == RunState::Running {
+            gs.player_charging.3 = false;
+        }
+
+        next_state
     } else {
         handle_keys(gs, ctx, is_weapon_sheathed)
     }
@@ -377,6 +442,7 @@ fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunS
                             .expect("Failed to insert new movement from player");
                     }
                     apply_invuln(&mut gs.ecs);
+                    gs.player_inventory.weapon.reset();
 
                     return RunState::Running;
                 } else {

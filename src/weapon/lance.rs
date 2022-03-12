@@ -60,7 +60,7 @@ fn get_attack_intent(
                 dest: crate::direction::Direction::point_in_direction(source_point, dir),
             },
             modifier: None,
-            loc: source_point,
+            loc: from_point,
             delay: 0,
         },
         LanceAttack::Charge => AttackIntent {

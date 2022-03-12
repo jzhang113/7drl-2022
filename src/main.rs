@@ -95,7 +95,7 @@ pub struct State {
     quests: quest::log::QuestLog,
     selected_quest: Option<quest::quest::Quest>,
     player_inventory: inventory::Inventory,
-    player_charging: (bool, crate::Direction, u8),
+    player_charging: (bool, crate::Direction, u8, bool),
 }
 
 impl State {
@@ -404,7 +404,7 @@ impl GameState for State {
             }
             RunState::Charging { dir, speed } => {
                 gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
-                self.player_charging = (true, dir, speed);
+                self.player_charging = (true, dir, speed, false);
                 next_status = RunState::Running
             }
             RunState::Targetting {
@@ -598,7 +598,7 @@ fn main() -> rltk::BError {
         quests: quest::log::QuestLog::new(),
         selected_quest: None,
         player_inventory: inventory::Inventory::new(),
-        player_charging: (false, crate::Direction::N, 0),
+        player_charging: (false, crate::Direction::N, 0, false),
     };
 
     gs.new_game();
