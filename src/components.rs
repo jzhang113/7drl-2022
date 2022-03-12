@@ -164,3 +164,6 @@ pub struct Npc {
 pub struct Invulnerable {
     pub duration: u32,
 }
+
+#[derive(Component)]
+pub struct MissionTarget;

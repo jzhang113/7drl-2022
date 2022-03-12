@@ -11,10 +11,22 @@ impl<'a> System<'a> for DeathSystem {
         ReadStorage<'a, crate::Position>,
         ReadStorage<'a, crate::Health>,
         ReadStorage<'a, crate::MultiTile>,
+        ReadStorage<'a, crate::MissionTarget>,
+        WriteExpect<'a, crate::MissionInfo>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, player, mut map, mut run_state, positions, healths, multitiles) = data;
+        let (
+            entities,
+            player,
+            mut map,
+            mut run_state,
+            positions,
+            healths,
+            multitiles,
+            targets,
+            mut m_info,
+        ) = data;
         let mut dead = Vec::new();
 
         for (ent, pos, health, multis) in
@@ -26,6 +38,14 @@ impl<'a> System<'a> for DeathSystem {
                 if ent != *player {
                     dead.push(ent);
                     map.untrack_creature(pos_index, multis);
+
+                    if targets.contains(ent) {
+                        m_info.remove(ent);
+                    }
+
+                    if m_info.is_done() {
+                        *run_state = crate::RunState::Dead { success: true };
+                    }
                 } else {
                     *run_state = crate::RunState::Dead { success: false };
                 }

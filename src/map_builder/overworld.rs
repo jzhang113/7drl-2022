@@ -25,7 +25,7 @@ impl MapBuilder for OverworldBuilder {
         self.get_map()
     }
 
-    fn spawn_entities(&mut self, ecs: &mut World) {
+    fn spawn_entities(&mut self, ecs: &mut World, spawn_info: &crate::SpawnInfo) {
         add_npc(ecs);
     }
 
@@ -83,7 +83,7 @@ impl OverworldBuilder {
 }
 
 fn add_npc(ecs: &mut World) {
-    spawner::build_npc_blacksmith(ecs, rltk::Point::new(15, 5));
-    spawner::build_npc_shopkeeper(ecs, rltk::Point::new(5, 5));
-    spawner::build_npc_handler(ecs, rltk::Point::new(15, 15));
+    crate::spawn::spawner::build_npc_blacksmith(ecs, rltk::Point::new(15, 5));
+    crate::spawn::spawner::build_npc_shopkeeper(ecs, rltk::Point::new(5, 5));
+    crate::spawn::spawner::build_npc_handler(ecs, rltk::Point::new(15, 15));
 }

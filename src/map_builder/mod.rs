@@ -7,7 +7,7 @@ const SHOW_MAPGEN_VISUALIZER: bool = false;
 
 pub trait MapBuilder {
     fn build_map(&mut self, rng: &mut rltk::RandomNumberGenerator) -> super::Map;
-    fn spawn_entities(&mut self, ecs: &mut super::World);
+    fn spawn_entities(&mut self, ecs: &mut super::World, spawn_info: &super::SpawnInfo);
     fn get_map(&self) -> super::Map;
     fn get_starting_position(&self) -> super::Position;
     fn get_snapshot_history(&self) -> Vec<super::Map>;

@@ -11,7 +11,7 @@ fn room_table(_map_depth: i32) -> Vec<(String, f32)> {
     spawn_ary
 }
 
-fn build_from_name(ecs: &mut World, name: &String, index: usize) -> Option<Entity> {
+pub fn build_from_name(ecs: &mut World, name: &String, index: usize) -> Option<Entity> {
     let point = { ecs.fetch::<Map>().index_to_point2d(index) };
 
     match name.as_ref() {
@@ -22,8 +22,7 @@ fn build_from_name(ecs: &mut World, name: &String, index: usize) -> Option<Entit
 }
 
 /// Fills a region with stuff!
-pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
-    let spawn_table = room_table(map_depth);
+pub fn spawn_region(ecs: &mut World, area: &[usize], spawn_info: &crate::SpawnInfo) {
     let mut spawn_points: HashMap<usize, String> = HashMap::new();
     let mut areas: Vec<usize> = Vec::from(area);
 
@@ -31,7 +30,7 @@ pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
         let mut rng = ecs.fetch_mut::<rltk::RandomNumberGenerator>();
         let num_spawns = i32::min(
             areas.len() as i32,
-            rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3,
+            rng.roll_dice(1, MAX_MONSTERS + 3) + (4 - 1) - 3,
         );
 
         if num_spawns == 0 {
@@ -46,8 +45,10 @@ pub fn spawn_region(ecs: &mut World, area: &[usize], map_depth: i32) {
             };
 
             let map_idx = areas[array_index];
-            spawn_points.insert(map_idx, roll(&spawn_table, &mut *rng));
-            areas.remove(array_index);
+            if let Some(spawn) = roll(spawn_info, &mut *rng) {
+                spawn_points.insert(map_idx, spawn);
+                areas.remove(array_index);
+            }
         }
     }
 
@@ -71,19 +72,24 @@ pub fn track_entity(ecs: &mut World, entity: Entity, map_idx: usize) {
     map.track_creature(entity, map_idx, multis.get(entity));
 }
 
-fn roll(chance: &Vec<(String, f32)>, rng: &mut rltk::RandomNumberGenerator) -> String {
-    let roll = rng.rand::<f32>();
-    let mut cumul_prob = 0.0;
+fn roll(spawn_info: &SpawnInfo, rng: &mut rltk::RandomNumberGenerator) -> Option<String> {
+    let type_roll = rng.rand::<f32>();
 
-    for index in 0..chance.len() {
-        cumul_prob += chance[index].1;
-
-        if roll < cumul_prob {
-            return chance[index].0.to_string();
+    if type_roll < 0.25 {
+        if spawn_info.minor_monsters.len() == 0 {
+            return None;
         }
-    }
 
-    chance[0].0.to_string()
+        let roll = rng.range::<usize>(0, spawn_info.minor_monsters.len());
+        Some(spawn_info.minor_monsters[roll].clone())
+    } else {
+        if spawn_info.resources.len() == 0 {
+            return None;
+        }
+
+        let roll = rng.range::<usize>(0, spawn_info.resources.len());
+        Some(spawn_info.resources[roll].clone())
+    }
 }
 
 // #region Player

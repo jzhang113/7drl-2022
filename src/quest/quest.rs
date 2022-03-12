@@ -1,7 +1,7 @@
 #[derive(Clone, PartialEq)]
 pub struct Quest {
     pub quest_type: QuestType,
-    pub quest_targets: Vec<String>,
+    pub spawn_info: crate::SpawnInfo,
     pub area_name: String,
     pub map_builder_args: crate::map_builder::MapBuilderArgs,
     pub reward: u32,
@@ -13,7 +13,7 @@ pub struct Quest {
 impl Quest {
     pub fn get_name(&self) -> String {
         let mut name = "Hunt ".to_owned();
-        name.push_str(&self.quest_targets.join(", "));
+        name.push_str(&self.spawn_info.major_monsters.join(", "));
         name
     }
 }

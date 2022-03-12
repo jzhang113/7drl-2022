@@ -43,9 +43,36 @@ impl MapBuilder for DrunkardsWalkBuilder {
         self.get_map()
     }
 
-    fn spawn_entities(&mut self, ecs: &mut World) {
+    fn spawn_entities(&mut self, ecs: &mut World, spawn_info: &crate::SpawnInfo) {
+        {
+            // spawn exactly 1 of each in the major monster list
+            for name in &spawn_info.major_monsters {
+                let map_index = {
+                    let mut rng = ecs.fetch_mut::<rltk::RandomNumberGenerator>();
+                    let random_area = rng.range(0, self.noise_areas.len());
+                    let random_spawn = &self.noise_areas.iter().nth(random_area).unwrap();
+                    random_spawn.1[rng.range(0, random_spawn.1.len())]
+                };
+
+                let entity = spawn::spawner::build_from_name(ecs, name, map_index);
+                // track the entity if we built one
+                if let Some(entity) = entity {
+                    {
+                        // mark as a target
+                        let mut targets = ecs.write_storage::<crate::MissionTarget>();
+                        targets.insert(entity, MissionTarget).ok();
+                    }
+
+                    spawn::spawner::track_entity(ecs, entity, map_index);
+                    let mut m_info = ecs.fetch_mut::<crate::MissionInfo>();
+                    m_info.add(entity);
+                }
+            }
+        }
+
+        // random spawns in each area of minor monsters and resources
         for area in self.noise_areas.iter() {
-            spawner::spawn_region(ecs, area.1, self.depth);
+            spawn::spawner::spawn_region(ecs, area.1, spawn_info);
         }
     }
 
@@ -237,7 +264,7 @@ impl DrunkardsWalkBuilder {
         self.take_snapshot();
 
         // Place the stairs
-        self.map.tiles[exit_tile] = TileType::DownStairs;
+        // self.map.tiles[exit_tile] = TileType::DownStairs;
         self.take_snapshot();
 
         // Now we build a noise map for use in spawning entities later

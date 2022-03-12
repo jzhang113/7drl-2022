@@ -115,10 +115,10 @@ pub fn draw_missions(
 
         ctx.print(
             book_x + book_page_w + 2,
-            book_y + book_page_h - 2 * quest.quest_targets.len() - 1,
+            book_y + book_page_h - 2 * quest.spawn_info.major_monsters.len() - 1,
             "Targets:",
         );
-        for (i, name) in quest.quest_targets.iter().enumerate() {
+        for (i, name) in quest.spawn_info.major_monsters.iter().enumerate() {
             ctx.print(
                 book_x + book_page_w + 3,
                 book_y + book_page_h - 2 * i - 1,

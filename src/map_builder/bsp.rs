@@ -72,9 +72,10 @@ pub fn build_level(ecs: &mut specs::World, width: i32, height: i32, depth: i32) 
         let quality = depth;
         let mut spawn_ary = Vec::new();
         spawn_ary.push(
-            spawner::build_mook as for<'r> fn(&'r mut specs::World, rltk::Point) -> specs::Entity,
+            spawn::spawner::build_mook
+                as for<'r> fn(&'r mut specs::World, rltk::Point) -> specs::Entity,
         );
-        spawn_ary.push(spawner::build_archer);
+        spawn_ary.push(spawn::spawner::build_archer);
         // spawner.build(
         //     &room,
         //     0 + quality / 2,
@@ -84,7 +85,7 @@ pub fn build_level(ecs: &mut specs::World, width: i32, height: i32, depth: i32) 
         // );
 
         let mut builder_ary = Vec::new();
-        builder_ary.push(spawner::build_empty_barrel);
+        builder_ary.push(spawn::spawner::build_empty_barrel);
 
         // spawner.build_with_quality(&room, 5, 10, depth, vec![1.0], builder_ary);
     }

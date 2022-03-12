@@ -19,11 +19,12 @@ mod gui;
 mod inventory;
 mod map;
 mod map_builder;
+mod mission_info;
 mod monster_part;
 mod player;
 mod quest;
 mod range_type;
-mod spawner;
+mod spawn;
 mod sys_ai;
 mod sys_attack;
 mod sys_death;
@@ -44,8 +45,10 @@ pub use colors::*;
 pub use components::*;
 pub use direction::Direction;
 pub use map::{Map, TileType};
+pub use mission_info::MissionInfo;
 pub use monster_part::*;
 pub use range_type::*;
+pub use spawn::info::SpawnInfo;
 pub use sys_ai::{Behavior, NextIntent};
 pub use sys_particle::{ParticleBuilder, ParticleRequest};
 
@@ -132,6 +135,7 @@ impl State {
         self.ecs.register::<PushForce>();
         self.ecs.register::<Npc>();
         self.ecs.register::<Invulnerable>();
+        self.ecs.register::<MissionTarget>();
     }
 
     fn new_game(&mut self) {
@@ -146,7 +150,7 @@ impl State {
         let map = Map::new(1, 1, 1, "#FFFFFF".to_string(), &mut rng);
         self.ecs.insert(map);
 
-        let player = spawner::build_player(&mut self.ecs, rltk::Point::new(0, 0));
+        let player = spawn::spawner::build_player(&mut self.ecs, rltk::Point::new(0, 0));
         self.ecs.insert(player);
 
         for _ in 0..3 {
@@ -158,6 +162,10 @@ impl State {
             entries: vec!["Hello world!".to_string()],
         };
         self.ecs.insert(log);
+
+        // TODO: temp in-mission info handling
+        let mission_info = MissionInfo::new();
+        self.ecs.insert(mission_info);
 
         self.load_overworld();
     }
@@ -217,66 +225,24 @@ impl State {
         to_delete
     }
 
-    fn change_level(&mut self) {
-        // Delete entities that aren't the player or his/her equipment
-        let to_delete = self.entities_need_cleanup();
-        for target in to_delete {
-            self.ecs
-                .delete_entity(target)
-                .expect("Unable to delete entity");
-        }
-
-        let curr_depth = {
-            let map = self.ecs.fetch::<Map>();
-            map.depth
-        };
-
-        let mut new_map_builder =
-            map_builder::random_builder(camera::MAP_W, camera::MAP_H, curr_depth + 1);
-        let new_map = {
-            let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
-            new_map_builder.build_map(&mut rng)
-        };
-
-        {
-            // update player position
-            let player = self.ecs.fetch::<Entity>();
-            let mut positions = self.ecs.write_storage::<Position>();
-            let mut player_pos = positions
-                .get_mut(*player)
-                .expect("player didn't have a position");
-
-            let new_player_pos = new_map_builder.get_starting_position();
-            player_pos.x = new_player_pos.x;
-            player_pos.y = new_player_pos.y;
-
-            // Mark the player's visibility as dirty
-            let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
-            let vs = viewshed_components.get_mut(*player);
-            if let Some(vs) = vs {
-                vs.dirty = true;
-            }
-
-            // replace map
-            let mut map_writer = self.ecs.write_resource::<Map>();
-            *map_writer = new_map;
-        }
-
-        // fill the map
-        new_map_builder.spawn_entities(&mut self.ecs);
-    }
-
     fn load_overworld(&mut self) {
-        self.new_level(MapBuilderArgs {
-            builder_type: 4,
-            width: 20,
-            height: 20,
-            depth: 0,
-            map_color: "#D4BF8E".to_string(),
-        })
+        self.new_level(
+            MapBuilderArgs {
+                builder_type: 4,
+                width: 20,
+                height: 20,
+                depth: 0,
+                map_color: "#D4BF8E".to_string(),
+            },
+            &SpawnInfo {
+                major_monsters: vec![],
+                minor_monsters: vec![],
+                resources: vec![],
+            },
+        )
     }
 
-    fn new_level(&mut self, map_builder_args: MapBuilderArgs) {
+    fn new_level(&mut self, map_builder_args: MapBuilderArgs, spawn_info: &SpawnInfo) {
         // Delete entities that aren't the player or his/her equipment
         let to_delete = self.entities_need_cleanup();
         for target in to_delete {
@@ -316,7 +282,7 @@ impl State {
         }
 
         // fill the map
-        map_builder.spawn_entities(&mut self.ecs);
+        map_builder.spawn_entities(&mut self.ecs, spawn_info);
     }
 
     fn reset_player(&mut self) {
@@ -495,16 +461,17 @@ impl GameState for State {
                     next_status = RunState::AwaitingInput;
                 }
                 Some(quest) => {
-                    self.new_level(quest.map_builder_args);
+                    self.new_level(quest.map_builder_args, &quest.spawn_info);
                     sys_visibility::VisibilitySystem.run_now(&self.ecs);
                     next_status = RunState::AwaitingInput;
                 }
             },
             RunState::ChangeMap => {
-                self.change_level();
+                // TODO: support multi-level maps
+                unreachable!();
                 // update visibility immediately so the screen isn't dark for a cycle
-                sys_visibility::VisibilitySystem.run_now(&self.ecs);
-                next_status = RunState::AwaitingInput;
+                // sys_visibility::VisibilitySystem.run_now(&self.ecs);
+                // next_status = RunState::AwaitingInput;
             }
             RunState::Dead { success } => {
                 gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
@@ -521,6 +488,11 @@ impl GameState for State {
                                 self.selected_quest = None;
                             }
 
+                            // clear out temp mission info
+                            {
+                                let mut m_info = self.ecs.fetch_mut::<MissionInfo>();
+                                m_info.reset();
+                            }
                             self.advance_day();
 
                             next_status = RunState::Running;
