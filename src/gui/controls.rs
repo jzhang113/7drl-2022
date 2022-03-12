@@ -1,4 +1,5 @@
 use super::consts::*;
+use crate::weapon::WeaponButton;
 use crate::*;
 
 pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
@@ -25,12 +26,6 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
         }
     };
 
-    if is_reaction {
-        ctx.print(CONSOLE_WIDTH - 6, y, "REACT");
-    } else {
-        ctx.print_color(CONSOLE_WIDTH - 5, y, inactive_color, bg_color, "MAIN");
-    }
-
     match *status {
         RunState::AwaitingInput => {
             // movement controls
@@ -40,27 +35,17 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
                 draw_movement_controls(ctx, x, y, icon_color, bg_color, false);
             }
 
-            // examine
-            let view_section_x = 13;
-            ctx.print_color(view_section_x, y, icon_color, bg_color, "v");
-            ctx.print(view_section_x + 1, y, "iew map");
+            // // examine
+            // let view_section_x = 13;
+            // ctx.print_color(view_section_x, y, icon_color, bg_color, "v");
+            // ctx.print(view_section_x + 1, y, "iew map");
 
             // space bar
-            let space_section_x = 25;
-            let space_action_str;
-            if is_reaction {
-                space_action_str = "block";
-            } else {
-                space_action_str = "draw card";
-            }
+            let space_section_x = 13;
+            let space_action_str = "dodge";
 
             ctx.print_color(space_section_x, y, icon_color, bg_color, "[SPACE]");
             ctx.print(space_section_x + 8, y, space_action_str);
-
-            // card section
-            let card_section_x = 45;
-            ctx.print_color(card_section_x, y, icon_color, bg_color, "[1-7]");
-            ctx.print(card_section_x + 6, y, "use card");
         }
         RunState::Targetting {
             attack_type: _,
@@ -143,6 +128,41 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
     }
 
     ctx.set_active_console(1);
+}
+
+pub fn add_weapon_text(ctx: &mut Rltk, weapon: &Box<dyn crate::weapon::Weapon>) {
+    let y = CONSOLE_HEIGHT - 1;
+    let icon_color = text_highlight_color();
+    let bg_color = bg_color();
+    // let inactive_color = text_inactive_color();
+
+    // weapons
+    let attack_section_x = 29;
+    let mut x = attack_section_x;
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Light) {
+        if name != "Draw Atk" {
+            ctx.print_color(x, y, icon_color, bg_color, "s");
+            ctx.print(x + 1, y, "heathe");
+            x += 10;
+        }
+
+        ctx.print_color(x, y, icon_color, bg_color, "z");
+        ctx.print(x + 2, y, &name);
+        x += name.len() + 5;
+    }
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Heavy) {
+        ctx.print_color(x, y, icon_color, bg_color, "x");
+        ctx.print(x + 2, y, &name);
+        x += name.len() + 5;
+    }
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Special) {
+        ctx.print_color(x, y, icon_color, bg_color, "c");
+        ctx.print(x + 2, y, &name);
+        x += name.len() + 5;
+    }
 }
 
 fn draw_movement_controls(ctx: &mut Rltk, x: i32, y: i32, fg: RGB, bg: RGB, inactive: bool) {

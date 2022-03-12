@@ -1,3 +1,4 @@
+use crate::weapon::WeaponButton;
 use crate::*;
 use rltk::{Point, Rltk, VirtualKeyCode};
 
@@ -123,31 +124,48 @@ fn handle_keys(
                 if is_reaction {
                     return RunState::AwaitingInput;
                 } else {
-                    return try_move_player(&mut gs.ecs, -1, 0);
+                    let next_state = try_move_player(&mut gs.ecs, -1, 0);
+                    if next_state != RunState::AwaitingInput {
+                        gs.player_inventory.weapon.reset();
+                    }
+                    next_state
                 }
             }
             VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
                 if is_reaction {
                     return RunState::AwaitingInput;
                 } else {
-                    return try_move_player(&mut gs.ecs, 1, 0);
+                    let next_state = try_move_player(&mut gs.ecs, 1, 0);
+                    if next_state != RunState::AwaitingInput {
+                        gs.player_inventory.weapon.reset();
+                    }
+                    next_state
                 }
             }
             VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
                 if is_reaction {
                     return RunState::AwaitingInput;
                 } else {
-                    return try_move_player(&mut gs.ecs, 0, -1);
+                    let next_state = try_move_player(&mut gs.ecs, 0, -1);
+                    if next_state != RunState::AwaitingInput {
+                        gs.player_inventory.weapon.reset();
+                    }
+                    next_state
                 }
             }
             VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
                 if is_reaction {
                     return RunState::AwaitingInput;
                 } else {
-                    return try_move_player(&mut gs.ecs, 0, 1);
+                    let next_state = try_move_player(&mut gs.ecs, 0, 1);
+                    if next_state != RunState::AwaitingInput {
+                        gs.player_inventory.weapon.reset();
+                    }
+                    next_state
                 }
             }
             VirtualKeyCode::Period => {
+                gs.player_inventory.weapon.reset();
                 return RunState::Running;
             }
             VirtualKeyCode::D => {
@@ -155,6 +173,41 @@ fn handle_keys(
                 return RunState::Dead { success: true };
             }
             VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
+            VirtualKeyCode::Z => {
+                if gs.player_inventory.weapon.can_activate(WeaponButton::Light) {
+                    gs.player_inventory.weapon.light_attack();
+                    return RunState::Running;
+                } else {
+                    return RunState::AwaitingInput;
+                }
+            }
+            VirtualKeyCode::X => {
+                if gs.player_inventory.weapon.can_activate(WeaponButton::Heavy) {
+                    gs.player_inventory.weapon.heavy_attack();
+                    return RunState::Running;
+                } else {
+                    return RunState::AwaitingInput;
+                }
+            }
+            VirtualKeyCode::C => {
+                if gs
+                    .player_inventory
+                    .weapon
+                    .can_activate(WeaponButton::Special)
+                {
+                    gs.player_inventory.weapon.special_attack();
+                    return RunState::Running;
+                } else {
+                    return RunState::AwaitingInput;
+                }
+            }
+            VirtualKeyCode::S => {
+                if gs.player_inventory.weapon.sheathe() {
+                    return RunState::Running;
+                } else {
+                    return RunState::AwaitingInput;
+                }
+            }
             _ => RunState::AwaitingInput,
         },
     }
@@ -351,7 +404,7 @@ pub fn mission_select_input(gs: &mut State, ctx: &mut Rltk, index: usize) -> Run
                 gs.selected_quest = Some(gs.quests.entries[index].clone());
                 return RunState::Running;
             }
-            VirtualKeyCode::C => {
+            VirtualKeyCode::A => {
                 gs.selected_quest = None;
             }
             _ => {}

@@ -36,6 +36,7 @@ mod sys_pickup;
 mod sys_push;
 mod sys_turn;
 mod sys_visibility;
+mod weapon;
 
 pub use attack_type::*;
 pub use camera::*;
@@ -370,6 +371,7 @@ impl GameState for State {
 
         // non-map elements
         gui::sidebar::draw_sidebar(&self.ecs, ctx, &self.selected_quest);
+        gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
 
         match next_status {
             RunState::AwaitingInput => {
