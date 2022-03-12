@@ -71,6 +71,74 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     RunState::AwaitingInput
 }
 
+fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
+    let mut attacks = gs.ecs.write_storage::<AttackIntent>();
+    let positions = gs.ecs.read_storage::<Position>();
+    let facings = gs.ecs.read_storage::<Facing>();
+    let player = gs.ecs.fetch::<Entity>();
+
+    let pos = positions.get(*player).unwrap();
+    let facing = facings.get(*player).unwrap();
+
+    match button {
+        WeaponButton::Light => {
+            if gs.player_inventory.weapon.can_activate(WeaponButton::Light) {
+                if let Some(attack) = gs
+                    .player_inventory
+                    .weapon
+                    .light_attack(pos.as_point(), facing.direction)
+                {
+                    attacks
+                        .insert(*player, attack)
+                        .expect("Failed to insert new attack from player");
+                }
+
+                return RunState::Running;
+            } else {
+                return RunState::AwaitingInput;
+            }
+        }
+        WeaponButton::Heavy => {
+            if gs.player_inventory.weapon.can_activate(WeaponButton::Heavy) {
+                if let Some(attack) = gs
+                    .player_inventory
+                    .weapon
+                    .heavy_attack(pos.as_point(), facing.direction)
+                {
+                    attacks
+                        .insert(*player, attack)
+                        .expect("Failed to insert new attack from player");
+                }
+
+                return RunState::Running;
+            } else {
+                return RunState::AwaitingInput;
+            }
+        }
+        WeaponButton::Special => {
+            if gs
+                .player_inventory
+                .weapon
+                .can_activate(WeaponButton::Special)
+            {
+                if let Some(attack) = gs
+                    .player_inventory
+                    .weapon
+                    .special_attack(pos.as_point(), facing.direction)
+                {
+                    attacks
+                        .insert(*player, attack)
+                        .expect("Failed to insert new attack from player");
+                }
+
+                return RunState::Running;
+            } else {
+                return RunState::AwaitingInput;
+            }
+        }
+    }
+}
+
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     let (is_reaction, target) = {
         let can_act = gs.ecs.read_storage::<super::CanActFlag>();
@@ -174,32 +242,13 @@ fn handle_keys(
             }
             VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
             VirtualKeyCode::Z => {
-                if gs.player_inventory.weapon.can_activate(WeaponButton::Light) {
-                    gs.player_inventory.weapon.light_attack();
-                    return RunState::Running;
-                } else {
-                    return RunState::AwaitingInput;
-                }
+                return weapon_attack(gs, WeaponButton::Light);
             }
             VirtualKeyCode::X => {
-                if gs.player_inventory.weapon.can_activate(WeaponButton::Heavy) {
-                    gs.player_inventory.weapon.heavy_attack();
-                    return RunState::Running;
-                } else {
-                    return RunState::AwaitingInput;
-                }
+                return weapon_attack(gs, WeaponButton::Heavy);
             }
             VirtualKeyCode::C => {
-                if gs
-                    .player_inventory
-                    .weapon
-                    .can_activate(WeaponButton::Special)
-                {
-                    gs.player_inventory.weapon.special_attack();
-                    return RunState::Running;
-                } else {
-                    return RunState::AwaitingInput;
-                }
+                return weapon_attack(gs, WeaponButton::Special);
             }
             VirtualKeyCode::S => {
                 if gs.player_inventory.weapon.sheathe() {

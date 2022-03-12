@@ -5,6 +5,7 @@ pub enum RangeType {
     Empty,
     Single,
     Square { size: i32 },
+    Path { dest: rltk::Point },
     Custom { offsets: Vec<(i32, i32)> },
 }
 
@@ -19,11 +20,13 @@ pub fn resolve_range_at(range: &RangeType, center: Point) -> Vec<Point> {
         RangeType::Square { size } => {
             for x in center.x - size..=center.x + size {
                 for y in center.y - size..=center.y + size {
-                    if !(x == center.x && y == center.y) {
-                        targets.push(Point::new(x, y));
-                    }
+                    targets.push(Point::new(x, y));
                 }
             }
+        }
+        RangeType::Path { dest } => {
+            targets = rltk::Bresenham::new(center, *dest).collect();
+            targets.push(*dest);
         }
         RangeType::Custom { offsets } => {
             for (dx, dy) in offsets {

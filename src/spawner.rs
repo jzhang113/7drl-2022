@@ -125,6 +125,9 @@ pub fn build_player(ecs: &mut World, point: Point) -> Entity {
             current: 10,
             max: 10,
         })
+        .with(Facing {
+            direction: crate::Direction::N,
+        })
         .build()
 }
 // #endregion

@@ -1,5 +1,5 @@
 use super::{Weapon, WeaponButton};
-use crate::AttackIntent;
+use crate::{AttackIntent, AttackType};
 
 pub struct Lance {
     state: LanceState,
@@ -38,6 +38,44 @@ fn get_attack_name(attack: LanceAttack) -> String {
         LanceAttack::Sweep => "Sweep",
     }
     .to_string()
+}
+
+fn get_attack_intent(
+    attack: LanceAttack,
+    from_point: rltk::Point,
+    dir: crate::Direction,
+) -> AttackIntent {
+    let source_point = crate::direction::Direction::point_in_direction(from_point, dir);
+
+    match attack {
+        LanceAttack::DrawAttack => AttackIntent {
+            main: AttackType::LanceDraw,
+            modifier: None,
+            loc: source_point,
+            delay: 0,
+        },
+        LanceAttack::Thrust { level } => AttackIntent {
+            main: AttackType::LanceThrust {
+                level,
+                dest: crate::direction::Direction::point_in_direction(source_point, dir),
+            },
+            modifier: None,
+            loc: source_point,
+            delay: 0,
+        },
+        LanceAttack::Charge => AttackIntent {
+            main: AttackType::LanceCharge,
+            modifier: None,
+            loc: from_point,
+            delay: 0,
+        },
+        LanceAttack::Sweep => AttackIntent {
+            main: AttackType::LanceSweep,
+            modifier: None,
+            loc: from_point,
+            delay: 1,
+        },
+    }
 }
 
 impl Lance {
@@ -137,25 +175,31 @@ impl Weapon for Lance {
         }
     }
 
-    fn light_attack(&mut self) -> Option<AttackIntent> {
+    fn light_attack(&mut self, from: rltk::Point, dir: crate::Direction) -> Option<AttackIntent> {
         if let Some((attack, next_state)) = self.next_state(WeaponButton::Light) {
             self.state = next_state;
+            Some(get_attack_intent(attack, from, dir))
+        } else {
+            None
         }
-        None
     }
 
-    fn heavy_attack(&mut self) -> Option<AttackIntent> {
+    fn heavy_attack(&mut self, from: rltk::Point, dir: crate::Direction) -> Option<AttackIntent> {
         if let Some((attack, next_state)) = self.next_state(WeaponButton::Heavy) {
             self.state = next_state;
+            Some(get_attack_intent(attack, from, dir))
+        } else {
+            None
         }
-        None
     }
 
-    fn special_attack(&mut self) -> Option<AttackIntent> {
+    fn special_attack(&mut self, from: rltk::Point, dir: crate::Direction) -> Option<AttackIntent> {
         if let Some((attack, next_state)) = self.next_state(WeaponButton::Special) {
             self.state = next_state;
+            Some(get_attack_intent(attack, from, dir))
+        } else {
+            None
         }
-        None
     }
 
     fn can_activate(&self, button: WeaponButton) -> bool {
