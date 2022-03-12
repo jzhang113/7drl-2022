@@ -102,7 +102,7 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk, is_weapon_sheathed: bool) {
         .join()
     {
         let symbol = if let Some(facing) = facing {
-            if ent != *player || is_weapon_sheathed {
+            if ent != *player || !is_weapon_sheathed {
                 match facing.direction {
                     Direction::N => rltk::to_cp437('^'),
                     Direction::E => rltk::to_cp437('>'),

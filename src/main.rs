@@ -72,6 +72,10 @@ pub enum RunState {
     Dead {
         success: bool,
     },
+    Charging {
+        dir: crate::Direction,
+        speed: u8,
+    },
 }
 
 pub struct State {
@@ -84,6 +88,7 @@ pub struct State {
     quests: quest::log::QuestLog,
     selected_quest: Option<quest::quest::Quest>,
     player_inventory: inventory::Inventory,
+    player_charging: (bool, crate::Direction, u8),
 }
 
 impl State {
@@ -369,7 +374,7 @@ impl GameState for State {
                 .player_inventory
                 .weapon
                 .attack_name(weapon::WeaponButton::Light)
-                .map_or(true, |name| name != "Draw Atk")
+                .map_or(false, |name| name == "Draw Atk")
         };
 
         // draw map + gui
@@ -391,6 +396,11 @@ impl GameState for State {
                 if next_status == RunState::Running {
                     player::end_turn_cleanup(&mut self.ecs);
                 }
+            }
+            RunState::Charging { dir, speed } => {
+                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
+                self.player_charging = (true, dir, speed);
+                next_status = RunState::Running
             }
             RunState::Targetting {
                 attack_type,
@@ -567,6 +577,7 @@ fn main() -> rltk::BError {
         quests: quest::log::QuestLog::new(),
         selected_quest: None,
         player_inventory: inventory::Inventory::new(),
+        player_charging: (false, crate::Direction::N, 0),
     };
 
     gs.new_game();

@@ -158,3 +158,8 @@ pub enum NpcType {
 pub struct Npc {
     pub npc_type: NpcType,
 }
+
+#[derive(Component)]
+pub struct RunStateChange {
+    pub new_state: crate::RunState,
+}

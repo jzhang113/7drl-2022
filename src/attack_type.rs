@@ -20,7 +20,7 @@ pub enum AttackType {
     // lance
     LanceDraw,
     LanceThrust { level: u8, dest: Point },
-    LanceCharge,
+    LanceCharge { dir: crate::Direction },
     LanceSweep,
     // enemy specific attacks
     Haymaker,
@@ -34,6 +34,7 @@ pub enum AttackTrait {
     Movement,
     Equipment,
     Heal { amount: i32 },
+    LanceCharge { dir: crate::Direction },
 }
 
 // check if an attack is can be executed
@@ -85,7 +86,7 @@ pub fn get_attack_range(attack_type: AttackType) -> RangeType {
         AttackType::Ranged => RangeType::Square { size: 3 },
         AttackType::LanceDraw => RangeType::Square { size: 1 },
         AttackType::LanceThrust { .. } => RangeType::Square { size: 1 },
-        AttackType::LanceCharge => RangeType::Single,
+        AttackType::LanceCharge { .. } => RangeType::Single,
         AttackType::LanceSweep => RangeType::Square { size: 1 },
     }
 }
@@ -102,7 +103,7 @@ pub fn get_attack_power(attack_type: AttackType) -> i32 {
         AttackType::Ranged => 1,
         AttackType::LanceDraw => 1,
         AttackType::LanceThrust { level, .. } => level as i32,
-        AttackType::LanceCharge => 0,
+        AttackType::LanceCharge { .. } => 0,
         AttackType::LanceSweep => 2,
     }
 }
@@ -119,7 +120,7 @@ pub fn get_attack_shape(attack_type: AttackType) -> RangeType {
         AttackType::Ranged => RangeType::Single,
         AttackType::LanceDraw => RangeType::Single,
         AttackType::LanceThrust { dest, .. } => RangeType::Path { dest },
-        AttackType::LanceCharge => RangeType::Single,
+        AttackType::LanceCharge { .. } => RangeType::Single,
         AttackType::LanceSweep => RangeType::Square { size: 1 },
     }
 }
@@ -209,7 +210,7 @@ pub fn get_attack_name(attack_type: AttackType) -> String {
         AttackType::Ranged => "shoot",
         AttackType::LanceDraw => "Draw Atk",
         AttackType::LanceThrust { .. } => "Thrust",
-        AttackType::LanceCharge => "Charge",
+        AttackType::LanceCharge { .. } => "Charge",
         AttackType::LanceSweep => "Sweep",
     }
     .to_string()
@@ -230,7 +231,7 @@ pub fn get_attack_traits(attack_type: AttackType) -> Vec<AttackTrait> {
         AttackType::LanceThrust { level, .. } => vec![Damage {
             amount: level as i32,
         }],
-        AttackType::LanceCharge => vec![Movement],
+        AttackType::LanceCharge { dir } => vec![LanceCharge { dir }],
         AttackType::LanceSweep => vec![Damage { amount: 2 }],
     }
 }

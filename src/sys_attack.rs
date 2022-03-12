@@ -15,6 +15,8 @@ impl<'a> System<'a> for AttackSystem {
         WriteStorage<'a, crate::Health>,
         WriteStorage<'a, crate::MultiTile>,
         WriteExpect<'a, crate::ParticleBuilder>,
+        ReadExpect<'a, Entity>,
+        WriteExpect<'a, crate::RunState>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -27,6 +29,8 @@ impl<'a> System<'a> for AttackSystem {
             mut healths,
             mut multis,
             mut p_builder,
+            player,
+            mut run_state,
         ) = data;
         let mut finished_attacks = Vec::new();
 
@@ -98,6 +102,11 @@ impl<'a> System<'a> for AttackSystem {
                     }
                     crate::AttackTrait::Equipment => {
                         // this is another marker
+                    }
+                    crate::AttackTrait::LanceCharge { dir } => {
+                        if ent == *player {
+                            *run_state = crate::RunState::Charging { dir, speed: 1 };
+                        }
                     }
                 }
             }

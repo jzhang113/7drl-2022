@@ -139,6 +139,72 @@ fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
     }
 }
 
+fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
+    let player = gs.ecs.fetch::<Entity>();
+    let map = gs.ecs.fetch::<Map>();
+
+    let mut movements = gs.ecs.write_storage::<MoveIntent>();
+    let mut attacks = gs.ecs.write_storage::<AttackIntent>();
+
+    let (mut player_x, mut player_y) = {
+        let pos = gs.ecs.read_storage::<Position>();
+        let p = pos.get(*player).unwrap();
+        (p.x, p.y)
+    };
+
+    for _ in 0..gs.player_charging.2 {
+        let next_point = crate::direction::Direction::point_in_direction(
+            rltk::Point::new(player_x, player_y),
+            gs.player_charging.1,
+        );
+
+        let dest_index = map.get_index(next_point.x, next_point.y);
+        if !map.blocked_tiles[dest_index] {
+            player_x = next_point.x;
+            player_y = next_point.y;
+            continue;
+        }
+
+        // If we hit an obstacle, move to the last legal position and stop
+        let new_move = MoveIntent {
+            loc: rltk::Point::new(player_x, player_y),
+        };
+        movements
+            .insert(*player, new_move)
+            .expect("Failed to insert new movement from player");
+        gs.player_charging.0 = false;
+
+        // If the obstacle happens to be a creature, also put in an attack
+        if let Some(_dest_ent) = map.creature_map.get(&dest_index) {
+            let attack = gs
+                .player_inventory
+                .weapon
+                .light_attack(next_point, gs.player_charging.1);
+
+            if let Some(attack) = attack {
+                attacks
+                    .insert(*player, attack)
+                    .expect("Failed to insert new attack from player");
+            }
+
+            return RunState::Running;
+        }
+    }
+
+    let new_move = MoveIntent {
+        loc: rltk::Point::new(player_x, player_y),
+    };
+    movements
+        .insert(*player, new_move)
+        .expect("Failed to insert new movement from player");
+
+    // If we did not stop charging, increase speed if possible
+    if gs.player_charging.2 < 3 {
+        gs.player_charging.2 += 1;
+    }
+    return RunState::Running;
+}
+
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     let (is_reaction, target) = {
         let can_act = gs.ecs.read_storage::<super::CanActFlag>();
@@ -150,7 +216,11 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
         (player_can_act.is_reaction, player_can_act.reaction_target)
     };
 
-    handle_keys(gs, ctx, is_reaction, target)
+    if gs.player_charging.0 {
+        handle_charging(gs, ctx)
+    } else {
+        handle_keys(gs, ctx, is_reaction, target)
+    }
 }
 
 pub fn end_turn_cleanup(ecs: &mut World) {

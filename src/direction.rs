@@ -1,6 +1,8 @@
+use derivative::Derivative;
 use rltk::Point;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Derivative)]
+#[derivative(Hash)]
 pub enum Direction {
     N,
     E,
@@ -9,21 +11,21 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub fn get_direction_towards(from: Point, goal: Point) -> Direction {
+    pub fn get_direction_towards(from: Point, goal: Point) -> Option<Direction> {
         let dx = goal.x - from.x;
         let dy = goal.y - from.y;
 
         if dx.abs() > dy.abs() {
             match dx.signum() {
-                1 => crate::Direction::E,
-                -1 => crate::Direction::W,
+                1 => Some(crate::Direction::E),
+                -1 => Some(crate::Direction::W),
                 _ => unreachable!(), // if dx.signum is 0, dx = 0, but we can't be in this branch in that case
             }
         } else {
             match dy.signum() {
-                1 => crate::Direction::S,
-                -1 => crate::Direction::N,
-                _ => crate::Direction::N,
+                1 => Some(crate::Direction::S),
+                -1 => Some(crate::Direction::N),
+                _ => None,
             }
         }
     }

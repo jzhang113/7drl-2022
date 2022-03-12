@@ -64,7 +64,7 @@ fn get_attack_intent(
             delay: 0,
         },
         LanceAttack::Charge => AttackIntent {
-            main: AttackType::LanceCharge,
+            main: AttackType::LanceCharge { dir },
             modifier: None,
             loc: from_point,
             delay: 0,

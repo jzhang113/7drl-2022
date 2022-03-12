@@ -291,7 +291,8 @@ impl AiSystem {
 
                 // no path to target, attempt to move towards the target
                 let curr_point = data.pos.as_point();
-                let dir = crate::Direction::get_direction_towards(curr_point, target_point);
+                let dir = crate::Direction::get_direction_towards(curr_point, target_point)
+                    .unwrap_or(crate::Direction::N);
                 let next_point = crate::Direction::point_in_direction(curr_point, dir);
 
                 if data
