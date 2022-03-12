@@ -153,10 +153,9 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
     };
 
     for _ in 0..gs.player_charging.2 {
-        let next_point = crate::direction::Direction::point_in_direction(
-            rltk::Point::new(player_x, player_y),
-            gs.player_charging.1,
-        );
+        let curr_point = rltk::Point::new(player_x, player_y);
+        let next_point =
+            crate::direction::Direction::point_in_direction(curr_point, gs.player_charging.1);
 
         let dest_index = map.get_index(next_point.x, next_point.y);
         if !map.blocked_tiles[dest_index] {
@@ -166,9 +165,7 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
         }
 
         // If we hit an obstacle, move to the last legal position and stop
-        let new_move = MoveIntent {
-            loc: rltk::Point::new(player_x, player_y),
-        };
+        let new_move = MoveIntent { loc: curr_point };
         movements
             .insert(*player, new_move)
             .expect("Failed to insert new movement from player");
@@ -179,7 +176,7 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
             let attack = gs
                 .player_inventory
                 .weapon
-                .light_attack(next_point, gs.player_charging.1);
+                .light_attack(curr_point, gs.player_charging.1);
 
             if let Some(attack) = attack {
                 attacks
@@ -189,6 +186,9 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
 
             return RunState::Running;
         }
+
+        gs.player_inventory.weapon.reset();
+        return RunState::Running;
     }
 
     let new_move = MoveIntent {
@@ -199,7 +199,7 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
         .expect("Failed to insert new movement from player");
 
     // If we did not stop charging, increase speed if possible
-    if gs.player_charging.2 < 3 {
+    if gs.player_charging.2 < 4 {
         gs.player_charging.2 += 1;
     }
     return RunState::Running;

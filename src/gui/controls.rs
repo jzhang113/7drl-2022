@@ -131,6 +131,8 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
 }
 
 pub fn add_weapon_text(ctx: &mut Rltk, weapon: &Box<dyn crate::weapon::Weapon>) {
+    ctx.set_active_console(3);
+
     let y = CONSOLE_HEIGHT - 1;
     let icon_color = text_highlight_color();
     let bg_color = bg_color();
@@ -163,6 +165,8 @@ pub fn add_weapon_text(ctx: &mut Rltk, weapon: &Box<dyn crate::weapon::Weapon>) 
         ctx.print(x + 2, y, &name);
         x += name.len() + 5;
     }
+
+    ctx.set_active_console(1);
 }
 
 fn draw_movement_controls(ctx: &mut Rltk, x: i32, y: i32, fg: RGB, bg: RGB, inactive: bool) {

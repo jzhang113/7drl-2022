@@ -345,8 +345,6 @@ impl GameState for State {
         // cleanup
         ctx.set_active_console(0);
         ctx.cls();
-        ctx.set_active_console(3);
-        ctx.cls();
         ctx.set_active_console(2);
         ctx.cls();
         ctx.set_active_console(1);
@@ -386,7 +384,6 @@ impl GameState for State {
 
         // non-map elements
         gui::sidebar::draw_sidebar(&self.ecs, ctx, &self.selected_quest);
-        gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
 
         match next_status {
             RunState::AwaitingInput => {
@@ -533,6 +530,8 @@ impl GameState for State {
                 }
             },
         }
+
+        gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
 
         let mut status_writer = self.ecs.write_resource::<RunState>();
         *status_writer = next_status;

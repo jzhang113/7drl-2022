@@ -28,10 +28,10 @@ fn get_attack_name(attack: LanceAttack) -> String {
     match attack {
         LanceAttack::DrawAttack => "Draw Atk",
         LanceAttack::Thrust { level } => match level {
-            1 => "Thrust I",
-            2 => "Thrust II",
-            3 => "Thrust III",
-            4 => "Charge Thrust",
+            1 => "Stab I",
+            2 => "Stab II",
+            3 => "Stab III",
+            4 => "Charge Stab",
             _ => unreachable!(),
         },
         LanceAttack::Charge => "Charge",
