@@ -2,10 +2,10 @@ use super::consts::*;
 use crate::*;
 use rltk::{Algorithm2D, Rltk, RGB};
 
-pub fn draw_all(ecs: &World, ctx: &mut Rltk) {
+pub fn draw_all(ecs: &World, ctx: &mut Rltk, is_weapon_sheathed: bool) {
     // map elements
     draw_map(ecs, ctx);
-    draw_renderables(ecs, ctx);
+    draw_renderables(ecs, ctx, is_weapon_sheathed);
     // draw_blocked_tiles(ecs, ctx);
     draw_attacks_in_progress(ecs, ctx);
 }
@@ -52,13 +52,15 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     }
 }
 
-pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
+pub fn draw_renderables(ecs: &World, ctx: &mut Rltk, is_weapon_sheathed: bool) {
+    let entities = ecs.entities();
     let positions = ecs.read_storage::<Position>();
     let renderables = ecs.read_storage::<Renderable>();
     let particles = ecs.read_storage::<ParticleLifetime>();
     let multitiles = ecs.read_storage::<MultiTile>();
     let facings = ecs.read_storage::<Facing>();
     let map = ecs.fetch::<Map>();
+    let player = ecs.fetch::<Entity>();
 
     for (pos, render, particle) in (&positions, &renderables, &particles).join() {
         if !map.camera.on_screen(pos.as_point()) {
@@ -90,7 +92,8 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
         }
     }
 
-    for (pos, render, mtt, facing) in (
+    for (ent, pos, render, mtt, facing) in (
+        &entities,
         &positions,
         &renderables,
         (&multitiles).maybe(),
@@ -99,11 +102,15 @@ pub fn draw_renderables(ecs: &World, ctx: &mut Rltk) {
         .join()
     {
         let symbol = if let Some(facing) = facing {
-            match facing.direction {
-                Direction::N => rltk::to_cp437('^'),
-                Direction::E => rltk::to_cp437('>'),
-                Direction::S => rltk::to_cp437('v'),
-                Direction::W => rltk::to_cp437('<'),
+            if ent != *player || is_weapon_sheathed {
+                match facing.direction {
+                    Direction::N => rltk::to_cp437('^'),
+                    Direction::E => rltk::to_cp437('>'),
+                    Direction::S => rltk::to_cp437('v'),
+                    Direction::W => rltk::to_cp437('<'),
+                }
+            } else {
+                render.symbol
             }
         } else {
             render.symbol
@@ -211,13 +218,11 @@ fn set_map_tile_with_bg(
 }
 
 fn highlight_bg(ctx: &mut Rltk, camera_pos: &rltk::Point, pos: &rltk::Point, color: RGB) {
-    ctx.set_active_console(0);
     ctx.set_bg(
         MAP_SCREEN_X + pos.x - camera_pos.x,
         MAP_SCREEN_Y + pos.y - camera_pos.y,
         color,
     );
-    ctx.set_active_console(1);
 }
 
 pub fn draw_viewable_info(ecs: &World, ctx: &mut Rltk, entity: &Entity, index: u32) {

@@ -340,6 +340,8 @@ impl GameState for State {
         // cleanup
         ctx.set_active_console(0);
         ctx.cls();
+        ctx.set_active_console(3);
+        ctx.cls();
         ctx.set_active_console(2);
         ctx.cls();
         ctx.set_active_console(1);
@@ -362,11 +364,19 @@ impl GameState for State {
             next_status = *self.ecs.fetch::<RunState>();
         }
 
+        let is_weapon_sheathed = {
+            &self
+                .player_inventory
+                .weapon
+                .attack_name(weapon::WeaponButton::Light)
+                .map_or(true, |name| name != "Draw Atk")
+        };
+
         // draw map + gui
         match next_status {
             // RunState::MissionSelect { .. } => {}
             RunState::Shop => {}
-            _ => gui::map::draw_all(&self.ecs, ctx),
+            _ => gui::map::draw_all(&self.ecs, ctx, *is_weapon_sheathed),
         };
 
         // non-map elements
@@ -539,7 +549,7 @@ fn main() -> rltk::BError {
             gui::consts::CONSOLE_HEIGHT,
             "custom_icons.png",
         ) // custom icons
-        .with_sparse_console(
+        .with_sparse_console_no_bg(
             gui::consts::CONSOLE_WIDTH,
             gui::consts::CONSOLE_HEIGHT,
             "Zilk-16x16.png",

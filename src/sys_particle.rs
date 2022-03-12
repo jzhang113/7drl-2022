@@ -56,6 +56,15 @@ impl ParticleBuilder {
             symbol: rltk::to_cp437('!'),
         });
     }
+
+    pub fn make_bg_particle(&mut self, point: Point) {
+        self.make_particle(crate::ParticleRequest {
+            color: rltk::RGB::named(rltk::DARKRED),
+            lifetime: 300.0,
+            position: point,
+            symbol: rltk::to_cp437('▒'),
+        });
+    }
 }
 
 pub struct ParticleSpawnSystem;

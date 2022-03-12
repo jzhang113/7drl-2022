@@ -52,6 +52,7 @@ impl<'a> System<'a> for AttackSystem {
                         let mut ents_hit = HashMap::new();
 
                         for point in targets {
+                            p_builder.make_bg_particle(point);
                             let point_index = map.point2d_to_index(point);
                             if let Some(aff_ent) = map.creature_map.get(&point_index) {
                                 // avoid self damage
