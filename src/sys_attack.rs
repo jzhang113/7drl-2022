@@ -17,6 +17,8 @@ impl<'a> System<'a> for AttackSystem {
         WriteExpect<'a, crate::ParticleBuilder>,
         ReadExpect<'a, Entity>,
         WriteExpect<'a, crate::RunState>,
+        WriteStorage<'a, crate::Invulnerable>,
+        WriteStorage<'a, crate::MoveIntent>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -31,6 +33,8 @@ impl<'a> System<'a> for AttackSystem {
             mut p_builder,
             player,
             mut run_state,
+            mut invulns,
+            mut movements,
         ) = data;
         let mut finished_attacks = Vec::new();
 
@@ -70,6 +74,10 @@ impl<'a> System<'a> for AttackSystem {
                         }
 
                         for (ent_hit, hit_locs) in ents_hit {
+                            if invulns.get(*ent_hit).is_some() {
+                                continue;
+                            }
+
                             if let Some(mut aff_health) = healths.get_mut(*ent_hit) {
                                 aff_health.current -= amount;
 
@@ -95,13 +103,26 @@ impl<'a> System<'a> for AttackSystem {
                         }
                     }
                     crate::AttackTrait::Movement => {
-                        //
+                        let targets = attack_type::each_attack_target(intent.main, intent.loc);
+                        assert!(targets.len() == 1);
+
+                        movements
+                            .insert(
+                                ent,
+                                crate::MoveIntent {
+                                    loc: targets[0],
+                                    force_facing: None,
+                                },
+                            )
+                            .ok();
+                    }
+                    crate::AttackTrait::Invulnerable { duration } => {
+                        invulns
+                            .insert(ent, crate::Invulnerable { duration })
+                            .expect("Failed to make player invulnerable");
                     }
                     crate::AttackTrait::Heal { amount: _ } => {
                         //
-                    }
-                    crate::AttackTrait::Equipment => {
-                        // this is another marker
                     }
                     crate::AttackTrait::LanceCharge { dir } => {
                         if ent == *player {

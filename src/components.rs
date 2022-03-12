@@ -80,6 +80,7 @@ pub struct AttackIntent {
 #[derive(Component, Copy, Clone)]
 pub struct MoveIntent {
     pub loc: rltk::Point,
+    pub force_facing: Option<crate::Direction>,
 }
 
 #[derive(Component)]
@@ -160,6 +161,6 @@ pub struct Npc {
 }
 
 #[derive(Component)]
-pub struct RunStateChange {
-    pub new_state: crate::RunState,
+pub struct Invulnerable {
+    pub duration: u32,
 }

@@ -263,6 +263,7 @@ impl AiSystem {
             return NextIntent::Move {
                 intent: MoveIntent {
                     loc: data.map.index_to_point2d(chosen_exit),
+                    force_facing: None,
                 },
             };
         } else {
@@ -284,7 +285,10 @@ impl AiSystem {
                         data.state.path_step += 1;
 
                         return NextIntent::Move {
-                            intent: MoveIntent { loc: next_pos },
+                            intent: MoveIntent {
+                                loc: next_pos,
+                                force_facing: None,
+                            },
                         };
                     }
                 }
@@ -300,7 +304,10 @@ impl AiSystem {
                     .is_exit_valid_for(next_point.x, next_point.y, data.ent, data.multi)
                 {
                     return NextIntent::Move {
-                        intent: MoveIntent { loc: next_point },
+                        intent: MoveIntent {
+                            loc: next_point,
+                            force_facing: None,
+                        },
                     };
                 }
 
@@ -313,7 +320,10 @@ impl AiSystem {
                 data.state.path_step = 2;
 
                 return NextIntent::Move {
-                    intent: MoveIntent { loc: next_pos },
+                    intent: MoveIntent {
+                        loc: next_pos,
+                        force_facing: None,
+                    },
                 };
             }
         }

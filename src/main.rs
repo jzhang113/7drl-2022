@@ -50,11 +50,19 @@ pub use sys_ai::{Behavior, NextIntent};
 pub use sys_particle::{ParticleBuilder, ParticleRequest};
 
 #[derive(PartialEq, Copy, Clone)]
+pub enum TargettingValid {
+    Unblocked,
+    Occupied,
+    None,
+}
+
+#[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     AwaitingInput,
     Targetting {
         attack_type: AttackType,
-        ignore_targetting: bool,
+        cursor_point: rltk::Point,
+        validity_mode: TargettingValid,
     },
     ViewEnemy {
         index: u32,
@@ -81,7 +89,6 @@ pub enum RunState {
 pub struct State {
     ecs: World,
     tick: i32,
-    cursor: rltk::Point,
     tab_targets: Vec<rltk::Point>,
     tab_index: usize,
     attack_modifier: Option<AttackType>,
@@ -124,6 +131,7 @@ impl State {
 
         self.ecs.register::<PushForce>();
         self.ecs.register::<Npc>();
+        self.ecs.register::<Invulnerable>();
     }
 
     fn new_game(&mut self) {
@@ -388,7 +396,7 @@ impl GameState for State {
         match next_status {
             RunState::AwaitingInput => {
                 gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
-                next_status = player::player_input(self, ctx);
+                next_status = player::player_input(self, ctx, *is_weapon_sheathed);
 
                 if next_status == RunState::Running {
                     player::end_turn_cleanup(&mut self.ecs);
@@ -401,18 +409,28 @@ impl GameState for State {
             }
             RunState::Targetting {
                 attack_type,
-                ignore_targetting,
+                cursor_point,
+                validity_mode,
             } => {
                 gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 let range_type = crate::attack_type::get_attack_range(attack_type);
                 let tiles_in_range = crate::range_type::resolve_range_at(&range_type, player_point);
 
-                let result = player::ranged_target(self, ctx, tiles_in_range, ignore_targetting);
+                let result =
+                    player::ranged_target(self, ctx, cursor_point, tiles_in_range, validity_mode);
                 match result.0 {
                     player::SelectionResult::Canceled => {
                         next_status = RunState::AwaitingInput;
                     }
-                    player::SelectionResult::NoResponse => {}
+                    player::SelectionResult::NoResponse => {
+                        if let Some(new_cursor) = result.1 {
+                            next_status = RunState::Targetting {
+                                attack_type,
+                                cursor_point: new_cursor,
+                                validity_mode,
+                            }
+                        }
+                    }
                     player::SelectionResult::Selected => {
                         {
                             // we should generally have a target at this point
@@ -531,7 +549,12 @@ impl GameState for State {
             },
         }
 
-        gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
+        match next_status {
+            RunState::Dead { .. } => {}
+            _ => {
+                gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
+            }
+        }
 
         let mut status_writer = self.ecs.write_resource::<RunState>();
         *status_writer = next_status;
@@ -569,7 +592,6 @@ fn main() -> rltk::BError {
     let mut gs = State {
         ecs: World::new(),
         tick: 0,
-        cursor: rltk::Point::zero(),
         tab_targets: Vec::new(),
         tab_index: 0,
         attack_modifier: None,

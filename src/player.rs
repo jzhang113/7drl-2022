@@ -28,6 +28,7 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
         if !map.blocked_tiles[dest_index] {
             let new_move = MoveIntent {
                 loc: Point::new(new_x, new_y),
+                force_facing: None,
             };
             movements
                 .insert(*player, new_move)
@@ -165,7 +166,10 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
         }
 
         // If we hit an obstacle, move to the last legal position and stop
-        let new_move = MoveIntent { loc: curr_point };
+        let new_move = MoveIntent {
+            loc: curr_point,
+            force_facing: None,
+        };
         movements
             .insert(*player, new_move)
             .expect("Failed to insert new movement from player");
@@ -193,6 +197,7 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
 
     let new_move = MoveIntent {
         loc: rltk::Point::new(player_x, player_y),
+        force_facing: None,
     };
     movements
         .insert(*player, new_move)
@@ -205,7 +210,7 @@ fn handle_charging(gs: &mut State, ctx: &mut Rltk) -> RunState {
     return RunState::Running;
 }
 
-pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
+pub fn player_input(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunState {
     let (is_reaction, target) = {
         let can_act = gs.ecs.read_storage::<super::CanActFlag>();
         let player = gs.ecs.fetch::<Entity>();
@@ -219,8 +224,52 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
     if gs.player_charging.0 {
         handle_charging(gs, ctx)
     } else {
-        handle_keys(gs, ctx, is_reaction, target)
+        handle_keys(gs, ctx, is_weapon_sheathed)
     }
+}
+
+fn handle_dodge(ecs: &mut World) -> Option<MoveIntent> {
+    let player = ecs.fetch::<Entity>();
+    let map = ecs.fetch::<Map>();
+    let facing = ecs.read_storage::<Facing>();
+
+    let (mut player_x, mut player_y, player_facing) = {
+        let pos = ecs.read_storage::<Position>();
+        let p = pos.get(*player).unwrap();
+        let f = facing.get(*player).unwrap();
+        (p.x, p.y, f.direction)
+    };
+
+    let (initial_x, initial_y) = (player_x, player_y);
+
+    let backhop_dir = match player_facing {
+        Direction::N => Direction::S,
+        Direction::E => Direction::W,
+        Direction::S => Direction::N,
+        Direction::W => Direction::E,
+    };
+
+    for _ in 0..2 {
+        let curr_point = rltk::Point::new(player_x, player_y);
+        let next_point = crate::direction::Direction::point_in_direction(curr_point, backhop_dir);
+        let dest_index = map.get_index(next_point.x, next_point.y);
+
+        if map.blocked_tiles[dest_index] {
+            break;
+        } else {
+            player_x = next_point.x;
+            player_y = next_point.y;
+        }
+    }
+
+    if initial_x == player_x && initial_y == player_y {
+        return None;
+    }
+
+    return Some(MoveIntent {
+        loc: rltk::Point::new(player_x, player_y),
+        force_facing: Some(player_facing),
+    });
 }
 
 pub fn end_turn_cleanup(ecs: &mut World) {
@@ -249,58 +298,37 @@ pub fn end_turn_cleanup(ecs: &mut World) {
     can_act.clear();
 }
 
-fn handle_keys(
-    gs: &mut State,
-    ctx: &mut Rltk,
-    is_reaction: bool,
-    reaction_target: Option<Entity>,
-) -> RunState {
+fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunState {
     match ctx.key {
         None => RunState::AwaitingInput,
         Some(key) => match key {
             VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
-                if is_reaction {
-                    return RunState::AwaitingInput;
-                } else {
-                    let next_state = try_move_player(&mut gs.ecs, -1, 0);
-                    if next_state != RunState::AwaitingInput {
-                        gs.player_inventory.weapon.reset();
-                    }
-                    next_state
+                let next_state = try_move_player(&mut gs.ecs, -1, 0);
+                if next_state != RunState::AwaitingInput {
+                    gs.player_inventory.weapon.reset();
                 }
+                next_state
             }
             VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
-                if is_reaction {
-                    return RunState::AwaitingInput;
-                } else {
-                    let next_state = try_move_player(&mut gs.ecs, 1, 0);
-                    if next_state != RunState::AwaitingInput {
-                        gs.player_inventory.weapon.reset();
-                    }
-                    next_state
+                let next_state = try_move_player(&mut gs.ecs, 1, 0);
+                if next_state != RunState::AwaitingInput {
+                    gs.player_inventory.weapon.reset();
                 }
+                next_state
             }
             VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
-                if is_reaction {
-                    return RunState::AwaitingInput;
-                } else {
-                    let next_state = try_move_player(&mut gs.ecs, 0, -1);
-                    if next_state != RunState::AwaitingInput {
-                        gs.player_inventory.weapon.reset();
-                    }
-                    next_state
+                let next_state = try_move_player(&mut gs.ecs, 0, -1);
+                if next_state != RunState::AwaitingInput {
+                    gs.player_inventory.weapon.reset();
                 }
+                next_state
             }
             VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
-                if is_reaction {
-                    return RunState::AwaitingInput;
-                } else {
-                    let next_state = try_move_player(&mut gs.ecs, 0, 1);
-                    if next_state != RunState::AwaitingInput {
-                        gs.player_inventory.weapon.reset();
-                    }
-                    next_state
+                let next_state = try_move_player(&mut gs.ecs, 0, 1);
+                if next_state != RunState::AwaitingInput {
+                    gs.player_inventory.weapon.reset();
                 }
+                next_state
             }
             VirtualKeyCode::Period => {
                 gs.player_inventory.weapon.reset();
@@ -327,9 +355,46 @@ fn handle_keys(
                     return RunState::AwaitingInput;
                 }
             }
+            VirtualKeyCode::Space => {
+                if is_weapon_sheathed {
+                    let p = {
+                        let player = gs.ecs.fetch::<Entity>();
+                        let pos = gs.ecs.read_storage::<Position>();
+                        pos.get(*player).unwrap().as_point()
+                    };
+
+                    return RunState::Targetting {
+                        attack_type: AttackType::Dodge,
+                        cursor_point: p,
+                        validity_mode: crate::TargettingValid::Unblocked,
+                    };
+                } else if let Some(move_intent) = handle_dodge(&mut gs.ecs) {
+                    {
+                        let mut movements = gs.ecs.write_storage::<MoveIntent>();
+                        let player = gs.ecs.fetch::<Entity>();
+                        movements
+                            .insert(*player, move_intent)
+                            .expect("Failed to insert new movement from player");
+                    }
+                    apply_invuln(&mut gs.ecs);
+
+                    return RunState::Running;
+                } else {
+                    return RunState::AwaitingInput;
+                }
+            }
             _ => RunState::AwaitingInput,
         },
     }
+}
+
+fn apply_invuln(ecs: &mut World) {
+    let mut invulns = ecs.write_storage::<Invulnerable>();
+    let player = ecs.fetch::<Entity>();
+
+    invulns
+        .insert(*player, Invulnerable { duration: 6 }) // 24 / 4 = 6 ticks
+        .expect("Failed to make player invulnerable");
 }
 
 pub enum SelectionResult {
@@ -341,15 +406,18 @@ pub enum SelectionResult {
 pub fn ranged_target(
     gs: &mut State,
     ctx: &mut Rltk,
+    cursor: rltk::Point,
     tiles_in_range: Vec<Point>,
-    ignore_targetting: bool,
+    validity_mode: crate::TargettingValid,
 ) -> (SelectionResult, Option<Point>) {
     let players = gs.ecs.read_storage::<Player>();
     let viewsheds = gs.ecs.read_storage::<Viewshed>();
+    let map = gs.ecs.fetch::<Map>();
+    let camera_point = map.camera.origin;
 
     let mut valid_target = false;
 
-    if ignore_targetting {
+    if validity_mode == TargettingValid::None {
         ctx.print_color(
             gui::consts::MAP_SCREEN_X,
             gui::consts::MAP_SCREEN_Y - 1,
@@ -364,32 +432,51 @@ pub fn ranged_target(
         let mut available_cells = Vec::new();
         for (_player, viewshed) in (&players, &viewsheds).join() {
             // We have a viewshed
-            for idx in viewshed.visible.iter() {
-                if tiles_in_range.contains(idx) {
+            for point in &viewshed.visible {
+                if tiles_in_range.contains(point) {
                     ctx.set_bg(
-                        gui::consts::MAP_SCREEN_X + idx.x,
-                        gui::consts::MAP_SCREEN_Y + idx.y,
+                        gui::consts::MAP_SCREEN_X + point.x - camera_point.x,
+                        gui::consts::MAP_SCREEN_Y + point.y - camera_point.y,
                         crate::tiles_in_range_color(),
                     );
-                    available_cells.push(idx);
+                    available_cells.push(point);
                 }
             }
         }
 
-        // Draw cursor
-        valid_target = available_cells
-            .iter()
-            .any(|pos| pos.x == gs.cursor.x && pos.y == gs.cursor.y);
+        // Apply validity
+        let valid_cells = match validity_mode {
+            TargettingValid::Unblocked => available_cells
+                .iter()
+                .filter(|point| {
+                    let idx = map.get_index(point.x, point.y);
+                    !map.blocked_tiles[idx]
+                })
+                .collect(),
+            TargettingValid::Occupied => available_cells
+                .iter()
+                .filter(|point| {
+                    let idx = map.get_index(point.x, point.y);
+                    map.creature_map.get(&idx).is_some()
+                })
+                .collect(),
+            TargettingValid::None => Vec::new(),
+        };
 
-        let cursor_color;
-        if valid_target {
-            cursor_color = crate::valid_cursor_color();
+        // Draw cursor
+        valid_target = valid_cells
+            .iter()
+            .any(|pos| pos.x == cursor.x && pos.y == cursor.y);
+
+        let cursor_color = if valid_target {
+            crate::valid_cursor_color()
         } else {
-            cursor_color = crate::invalid_cursor_color();
-        }
+            crate::invalid_cursor_color()
+        };
+
         ctx.set_bg(
-            gui::consts::MAP_SCREEN_X + gs.cursor.x,
-            gui::consts::MAP_SCREEN_Y + gs.cursor.y,
+            gui::consts::MAP_SCREEN_X + cursor.x - camera_point.x,
+            gui::consts::MAP_SCREEN_Y + cursor.y - camera_point.y,
             cursor_color,
         );
         ctx.set_active_console(1);
@@ -421,9 +508,9 @@ pub fn ranged_target(
                 if valid_target {
                     return (
                         SelectionResult::Selected,
-                        Some(Point::new(gs.cursor.x, gs.cursor.y)),
+                        Some(Point::new(cursor.x, cursor.y)),
                     );
-                } else if ignore_targetting {
+                } else if validity_mode == TargettingValid::None {
                     return (SelectionResult::Selected, None);
                 } else {
                     return (SelectionResult::Canceled, None);
@@ -434,23 +521,36 @@ pub fn ranged_target(
 
                 if length > 0 {
                     gs.tab_index += 1;
-                    gs.cursor = gs.tab_targets[gs.tab_index % length];
+                    return (
+                        SelectionResult::NoResponse,
+                        Some(gs.tab_targets[gs.tab_index % length]),
+                    );
                 }
             }
             VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
-                gs.cursor.x -= 1;
+                return (
+                    SelectionResult::NoResponse,
+                    Some(rltk::Point::new(cursor.x - 1, cursor.y)),
+                );
             }
             VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
-                gs.cursor.x += 1;
+                return (
+                    SelectionResult::NoResponse,
+                    Some(rltk::Point::new(cursor.x + 1, cursor.y)),
+                );
             }
             VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
-                gs.cursor.y -= 1;
+                return (
+                    SelectionResult::NoResponse,
+                    Some(rltk::Point::new(cursor.x, cursor.y - 1)),
+                );
             }
             VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
-                gs.cursor.y += 1;
+                return (
+                    SelectionResult::NoResponse,
+                    Some(rltk::Point::new(cursor.x, cursor.y + 1)),
+                );
             }
-            // TODO: placeholder
-            VirtualKeyCode::V => return (SelectionResult::Canceled, None),
             _ => {}
         },
     };

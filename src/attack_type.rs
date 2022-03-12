@@ -32,8 +32,8 @@ pub enum AttackTrait {
     Damage { amount: i32 },
     Knockback { amount: i32 },
     Movement,
-    Equipment,
     Heal { amount: i32 },
+    Invulnerable { duration: u32 },
     LanceCharge { dir: crate::Direction },
 }
 
@@ -80,7 +80,7 @@ pub fn get_attack_range(attack_type: AttackType) -> RangeType {
         AttackType::Punch => RangeType::Square { size: 1 },
         AttackType::Stun => RangeType::Square { size: 1 },
         AttackType::Push => RangeType::Square { size: 1 },
-        AttackType::Dodge => RangeType::Square { size: 2 },
+        AttackType::Dodge => RangeType::Diamond { size: 2 },
         AttackType::Recover => RangeType::Single,
         AttackType::Haymaker => RangeType::Square { size: 1 },
         AttackType::Ranged => RangeType::Square { size: 3 },
@@ -131,7 +131,6 @@ pub fn get_attack_delay(attack_type: AttackType) -> i32 {
         AttackType::Punch => 0,
         AttackType::Stun => 2,
         AttackType::Push => 0,
-        AttackType::Dodge => 2,
         AttackType::Recover => 0,
         AttackType::Haymaker => -4,
         AttackType::Ranged => 0,
@@ -223,7 +222,7 @@ pub fn get_attack_traits(attack_type: AttackType) -> Vec<AttackTrait> {
         AttackType::Punch => vec![Damage { amount: 1 }],
         AttackType::Stun => vec![Damage { amount: 0 }],
         AttackType::Push => vec![Knockback { amount: 2 }],
-        AttackType::Dodge => vec![Movement],
+        AttackType::Dodge => vec![Movement, Invulnerable { duration: 6 }], // 24 / 4 = 6 ticks
         AttackType::Recover => vec![Heal { amount: 2 }],
         AttackType::Haymaker => vec![Damage { amount: 2 }],
         AttackType::Ranged => vec![Damage { amount: 1 }],

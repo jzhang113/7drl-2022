@@ -47,21 +47,13 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
             ctx.print_color(space_section_x, y, icon_color, bg_color, "[SPACE]");
             ctx.print(space_section_x + 8, y, space_action_str);
         }
-        RunState::Targetting {
-            attack_type: _,
-            ignore_targetting,
-        } => {
+        RunState::Targetting { validity_mode, .. } => {
             // movement controls
-            if ignore_targetting {
+            if validity_mode == crate::TargettingValid::None {
                 draw_movement_controls(ctx, x, y, inactive_color, bg_color, true);
             } else {
                 draw_movement_controls(ctx, x, y, icon_color, bg_color, false);
             }
-
-            // examine
-            let view_section_x = 13;
-            ctx.print_color(view_section_x, y, icon_color, bg_color, "v");
-            ctx.print(view_section_x + 1, y, "iew card");
 
             // space bar
             let space_section_x = 25;
@@ -75,7 +67,7 @@ pub fn update_controls_text(ecs: &World, ctx: &mut Rltk, status: &RunState) {
 
             // tab target
             let tab_section_x = 60;
-            if ignore_targetting {
+            if validity_mode == crate::TargettingValid::None {
                 ctx.print_color(tab_section_x, y, inactive_color, bg_color, "[TAB]");
                 ctx.print_color(
                     tab_section_x + 6,

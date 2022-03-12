@@ -43,7 +43,10 @@ impl<'a> System<'a> for MovementSystem {
             let mut attack_pos = None;
 
             if let Some(facing) = facing {
-                if let Some(dir) = crate::Direction::get_direction_towards(pos.as_point(), new_pos)
+                if let Some(dir) = movement.force_facing {
+                    facing.direction = dir;
+                } else if let Some(dir) =
+                    crate::Direction::get_direction_towards(pos.as_point(), new_pos)
                 {
                     facing.direction = dir;
                 }

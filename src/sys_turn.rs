@@ -11,19 +11,33 @@ impl<'a> System<'a> for TurnSystem {
         WriteStorage<'a, Schedulable>,
         ReadStorage<'a, Position>,
         ReadExpect<'a, Entity>,
+        WriteStorage<'a, crate::Invulnerable>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut game_state, entities, mut can_act, mut schedulables, pos, player) = data;
+        let (mut game_state, entities, mut can_act, mut schedulables, pos, player, mut invulns) =
+            data;
         assert!(*game_state == RunState::Running);
-
         if can_act.get(*player).is_some() {
             *game_state = RunState::AwaitingInput;
             return;
         }
 
-        for (ent, sched, _pos) in (&entities, &mut schedulables, &pos).join() {
+        let mut invuln_over = Vec::new();
+
+        for (ent, sched, _pos, invuln) in
+            (&entities, &mut schedulables, &pos, (&mut invulns).maybe()).join()
+        {
             sched.current -= sched.delta;
+
+            if let Some(invuln) = invuln {
+                invuln.duration -= 1;
+
+                if invuln.duration <= 0 {
+                    invuln_over.push(ent);
+                }
+            }
+
             if sched.current > 0 {
                 continue;
             }
@@ -38,6 +52,10 @@ impl<'a> System<'a> for TurnSystem {
                     },
                 )
                 .expect("Failed to insert CanActFlag");
+        }
+
+        for done in invuln_over {
+            invulns.remove(done);
         }
     }
 }
