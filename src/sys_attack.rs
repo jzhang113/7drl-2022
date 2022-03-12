@@ -19,6 +19,7 @@ impl<'a> System<'a> for AttackSystem {
         WriteExpect<'a, crate::RunState>,
         WriteStorage<'a, crate::Invulnerable>,
         WriteStorage<'a, crate::MoveIntent>,
+        WriteStorage<'a, crate::Stamina>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
@@ -35,6 +36,7 @@ impl<'a> System<'a> for AttackSystem {
             mut run_state,
             mut invulns,
             mut movements,
+            mut stams,
         ) = data;
         let mut finished_attacks = Vec::new();
 
@@ -120,6 +122,12 @@ impl<'a> System<'a> for AttackSystem {
                         invulns
                             .insert(ent, crate::Invulnerable { duration })
                             .expect("Failed to make player invulnerable");
+                    }
+                    crate::AttackTrait::NeedsStamina { amount } => {
+                        if let Some(stamina) = stams.get_mut(ent) {
+                            stamina.current -= amount;
+                            stamina.recover = false;
+                        }
                     }
                     crate::AttackTrait::Heal { amount: _ } => {
                         //

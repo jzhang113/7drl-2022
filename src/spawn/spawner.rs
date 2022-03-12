@@ -128,8 +128,9 @@ pub fn build_player(ecs: &mut World, point: Point) -> Entity {
             max: 10,
         })
         .with(Stamina {
-            current: 10,
-            max: 10,
+            current: 8,
+            max: 8,
+            recover: true,
         })
         .with(Facing {
             direction: crate::Direction::N,

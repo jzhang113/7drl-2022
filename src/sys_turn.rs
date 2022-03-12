@@ -12,11 +12,20 @@ impl<'a> System<'a> for TurnSystem {
         ReadStorage<'a, Position>,
         ReadExpect<'a, Entity>,
         WriteStorage<'a, crate::Invulnerable>,
+        WriteStorage<'a, crate::Stamina>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut game_state, entities, mut can_act, mut schedulables, pos, player, mut invulns) =
-            data;
+        let (
+            mut game_state,
+            entities,
+            mut can_act,
+            mut schedulables,
+            pos,
+            player,
+            mut invulns,
+            mut stams,
+        ) = data;
         assert!(*game_state == RunState::Running);
         if can_act.get(*player).is_some() {
             *game_state = RunState::AwaitingInput;
@@ -25,8 +34,14 @@ impl<'a> System<'a> for TurnSystem {
 
         let mut invuln_over = Vec::new();
 
-        for (ent, sched, _pos, invuln) in
-            (&entities, &mut schedulables, &pos, (&mut invulns).maybe()).join()
+        for (ent, sched, _pos, invuln, stam) in (
+            &entities,
+            &mut schedulables,
+            &pos,
+            (&mut invulns).maybe(),
+            (&mut stams).maybe(),
+        )
+            .join()
         {
             sched.current -= sched.delta;
 
@@ -40,6 +55,14 @@ impl<'a> System<'a> for TurnSystem {
 
             if sched.current > 0 {
                 continue;
+            }
+
+            if let Some(stamina) = stam {
+                if !stamina.recover {
+                    stamina.recover = true;
+                } else if stamina.current < stamina.max {
+                    stamina.current += 1;
+                }
             }
 
             sched.current += sched.base;

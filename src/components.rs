@@ -67,6 +67,7 @@ pub struct Health {
 pub struct Stamina {
     pub current: i32,
     pub max: i32,
+    pub recover: bool,
 }
 
 #[derive(Component, Copy, Clone)]

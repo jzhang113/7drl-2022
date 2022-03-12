@@ -35,6 +35,7 @@ pub enum AttackTrait {
     Heal { amount: i32 },
     Invulnerable { duration: u32 },
     LanceCharge { dir: crate::Direction },
+    NeedsStamina { amount: i32 },
 }
 
 // check if an attack is can be executed
@@ -222,7 +223,13 @@ pub fn get_attack_traits(attack_type: AttackType) -> Vec<AttackTrait> {
         AttackType::Punch => vec![Damage { amount: 1 }],
         AttackType::Stun => vec![Damage { amount: 0 }],
         AttackType::Push => vec![Knockback { amount: 2 }],
-        AttackType::Dodge => vec![Movement, Invulnerable { duration: 6 }], // 24 / 4 = 6 ticks
+        AttackType::Dodge => vec![
+            Movement,
+            Invulnerable { duration: 6 },
+            NeedsStamina {
+                amount: crate::player::DODGE_STAM_REQ,
+            },
+        ], // 24 / 4 = 6 ticks
         AttackType::Recover => vec![Heal { amount: 2 }],
         AttackType::Haymaker => vec![Damage { amount: 2 }],
         AttackType::Ranged => vec![Damage { amount: 1 }],

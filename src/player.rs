@@ -2,6 +2,9 @@ use crate::weapon::WeaponButton;
 use crate::*;
 use rltk::{Point, Rltk, VirtualKeyCode};
 
+pub const DODGE_STAM_REQ: i32 = 3;
+pub const CHARGE_STAM_REQ: i32 = 2;
+
 fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     use std::cmp::{max, min};
     let mut positions = ecs.write_storage::<Position>();
@@ -95,14 +98,27 @@ fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
     let mut attacks = gs.ecs.write_storage::<AttackIntent>();
     let positions = gs.ecs.read_storage::<Position>();
     let facings = gs.ecs.read_storage::<Facing>();
+    let mut stams = gs.ecs.write_storage::<Stamina>();
     let player = gs.ecs.fetch::<Entity>();
 
     let pos = positions.get(*player).unwrap();
     let facing = facings.get(*player).unwrap();
+    let mut stamina = stams.get_mut(*player).unwrap();
 
     match button {
         WeaponButton::Light => {
-            if gs.player_inventory.weapon.can_activate(WeaponButton::Light) {
+            if let Some(stam_req) = gs
+                .player_inventory
+                .weapon
+                .can_activate_cost(WeaponButton::Light)
+            {
+                if stam_req > stamina.current {
+                    return RunState::AwaitingInput;
+                }
+
+                stamina.current -= stam_req;
+                stamina.recover = false;
+
                 if let Some(attack) = gs
                     .player_inventory
                     .weapon
@@ -119,7 +135,18 @@ fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
             }
         }
         WeaponButton::Heavy => {
-            if gs.player_inventory.weapon.can_activate(WeaponButton::Heavy) {
+            if let Some(stam_req) = gs
+                .player_inventory
+                .weapon
+                .can_activate_cost(WeaponButton::Heavy)
+            {
+                if stam_req > stamina.current {
+                    return RunState::AwaitingInput;
+                }
+
+                stamina.current -= stam_req;
+                stamina.recover = false;
+
                 if let Some(attack) = gs
                     .player_inventory
                     .weapon
@@ -136,11 +163,18 @@ fn weapon_attack(gs: &mut State, button: WeaponButton) -> RunState {
             }
         }
         WeaponButton::Special => {
-            if gs
+            if let Some(stam_req) = gs
                 .player_inventory
                 .weapon
-                .can_activate(WeaponButton::Special)
+                .can_activate_cost(WeaponButton::Special)
             {
+                if stam_req > stamina.current {
+                    return RunState::AwaitingInput;
+                }
+
+                stamina.current -= stam_req;
+                stamina.recover = false;
+
                 if let Some(attack) = gs
                     .player_inventory
                     .weapon
@@ -231,14 +265,12 @@ fn handle_charging(gs: &mut State) -> bool {
 }
 
 pub fn player_input(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunState {
-    let (is_reaction, target) = {
+    {
         let can_act = gs.ecs.read_storage::<super::CanActFlag>();
         let player = gs.ecs.fetch::<Entity>();
-        let player_can_act = can_act
+        can_act
             .get(*player)
             .expect("player_input called, but it is not your turn");
-
-        (player_can_act.is_reaction, player_can_act.reaction_target)
     };
 
     if gs.player_charging.0 {
@@ -285,6 +317,19 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) ->
 
         if next_state == RunState::Running {
             gs.player_charging.3 = false;
+
+            // end charging if we run out of stamina
+            let mut stams = gs.ecs.write_storage::<Stamina>();
+            let player = gs.ecs.fetch::<Entity>();
+            let mut stamina = stams.get_mut(*player).unwrap();
+
+            if stamina.current < CHARGE_STAM_REQ {
+                gs.player_charging.0 = false;
+                return RunState::Running;
+            } else {
+                stamina.current -= CHARGE_STAM_REQ;
+                stamina.recover = false;
+            }
         }
 
         next_state
@@ -335,6 +380,21 @@ fn handle_dodge(ecs: &mut World) -> Option<MoveIntent> {
         loc: rltk::Point::new(player_x, player_y),
         force_facing: Some(player_facing),
     });
+}
+
+pub fn can_dodge(gs: &mut State) -> bool {
+    let stams = gs.ecs.read_storage::<Stamina>();
+    let player = gs.ecs.fetch::<Entity>();
+    let stamina = stams.get(*player).unwrap();
+    stamina.current >= DODGE_STAM_REQ
+}
+
+fn reduce_stam_for_dodge(ecs: &mut World) {
+    let mut stams = ecs.write_storage::<Stamina>();
+    let player = ecs.fetch::<Entity>();
+    let mut stamina = stams.get_mut(*player).unwrap();
+    stamina.current -= DODGE_STAM_REQ;
+    stamina.recover = false;
 }
 
 pub fn end_turn_cleanup(ecs: &mut World) {
@@ -421,7 +481,9 @@ fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunS
                 }
             }
             VirtualKeyCode::Space => {
-                if is_weapon_sheathed {
+                if !can_dodge(gs) {
+                    return RunState::AwaitingInput;
+                } else if is_weapon_sheathed {
                     let p = {
                         let player = gs.ecs.fetch::<Entity>();
                         let pos = gs.ecs.read_storage::<Position>();
@@ -442,6 +504,7 @@ fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunS
                             .expect("Failed to insert new movement from player");
                     }
                     apply_invuln(&mut gs.ecs);
+                    reduce_stam_for_dodge(&mut gs.ecs);
                     gs.player_inventory.weapon.reset();
 
                     return RunState::Running;

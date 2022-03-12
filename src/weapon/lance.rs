@@ -40,6 +40,21 @@ fn get_attack_name(attack: LanceAttack) -> String {
     .to_string()
 }
 
+fn get_attack_stamina_req(attack: LanceAttack) -> i32 {
+    match attack {
+        LanceAttack::DrawAttack => 1,
+        LanceAttack::Thrust { level } => match level {
+            1 => 2,
+            2 => 3,
+            3 => 3,
+            4 => 0,
+            _ => unreachable!(),
+        },
+        LanceAttack::Charge => 2,
+        LanceAttack::Sweep => 3,
+    }
+}
+
 fn get_attack_intent(
     attack: LanceAttack,
     from_point: rltk::Point,
@@ -202,8 +217,9 @@ impl Weapon for Lance {
         }
     }
 
-    fn can_activate(&self, button: WeaponButton) -> bool {
-        self.next_state(button).is_some()
+    fn can_activate_cost(&self, button: WeaponButton) -> Option<i32> {
+        self.next_state(button)
+            .map(|(attack, _)| get_attack_stamina_req(attack))
     }
 
     fn attack_name(&self, button: WeaponButton) -> Option<String> {

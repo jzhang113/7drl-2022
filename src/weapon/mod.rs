@@ -26,6 +26,6 @@ pub trait Weapon {
         dir: crate::Direction,
     ) -> Option<crate::AttackIntent>;
 
-    fn can_activate(&self, button: WeaponButton) -> bool;
+    fn can_activate_cost(&self, button: WeaponButton) -> Option<i32>;
     fn attack_name(&self, button: WeaponButton) -> Option<String>;
 }
