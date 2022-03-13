@@ -1,16 +1,17 @@
 use super::consts::*;
-use crate::quest::quest::Quest;
+use crate::weapon::WeaponButton;
 use crate::*;
 use rltk::{Rltk, RGB};
 
-pub fn draw_sidebar(ecs: &World, ctx: &mut Rltk, current_quest: &Option<Quest>) {
-    let players = ecs.read_storage::<Player>();
-    let healths = ecs.read_storage::<Health>();
-    let stams = ecs.read_storage::<Stamina>();
+pub fn draw_sidebar(gs: &State, ctx: &mut Rltk) {
+    let players = gs.ecs.read_storage::<Player>();
+    let healths = gs.ecs.read_storage::<Health>();
+    let stams = gs.ecs.read_storage::<Stamina>();
+    let views = gs.ecs.read_storage::<Viewable>();
 
-    let rends = ecs.read_storage::<Renderable>();
-    let in_progress = ecs.read_storage::<AttackInProgress>();
-    let player = ecs.fetch::<Entity>();
+    let player = gs.ecs.fetch::<Entity>();
+    let m_info = gs.ecs.fetch::<MissionInfo>();
+    let next_state = gs.ecs.fetch::<RunState>();
 
     ctx.draw_box(
         SIDE_X,
@@ -24,26 +25,7 @@ pub fn draw_sidebar(ecs: &World, ctx: &mut Rltk, current_quest: &Option<Quest>) 
     let x = SIDE_X + 1;
     let mut y = SIDE_Y + 1;
 
-    for (_, rend, stamina, health, attack) in
-        (&players, &rends, &stams, &healths, (&in_progress).maybe()).join()
-    {
-        // change symbol color if attacking
-        let symbol_color;
-        if attack.is_some() {
-            symbol_color = attack_highlight_color();
-        } else {
-            symbol_color = RGB::named(rltk::WHITE);
-        }
-
-        ctx.set(x, y, symbol_color, bg_color(), rend.symbol);
-        ctx.set(
-            x + 1,
-            y,
-            RGB::named(rltk::WHITE),
-            RGB::named(rltk::BLACK),
-            rltk::to_cp437(':'),
-        );
-
+    for (_, stamina, health) in (&players, &stams, &healths).join() {
         draw_resource_bar(
             ctx,
             health.current,
@@ -59,32 +41,103 @@ pub fn draw_sidebar(ecs: &World, ctx: &mut Rltk, current_quest: &Option<Quest>) 
             stamina.current,
             stamina.max,
             x,
-            y + 2,
+            y + 1,
             stam_main_color(),
             stam_alt_color(),
         );
     }
 
-    y += 4;
+    if gs.player_charging.0 {
+        ctx.print(x, y + 2, "Charging!");
+    }
 
-    if let Some(quest) = current_quest {
+    // Quest info
+    y += 4;
+    ctx.print(x, y, "Quest:");
+    if let Some(quest) = &gs.selected_quest {
         ctx.print_color(
-            x,
+            x + 6,
             y,
             crate::text_highlight_color(),
             crate::bg_color(),
-            quest.get_name(),
+            "Accepted",
+        );
+
+        ctx.print(x, y + 2, "Targets");
+        for (i, name) in quest.spawn_info.major_monsters.iter().enumerate() {
+            ctx.print(x + 2, y + 4 + 2 * i as i32, name);
+        }
+    } else if matches!(*next_state, RunState::Dead { success: false }) {
+        ctx.print_color(
+            x + 6,
+            y,
+            crate::text_failed_color(),
+            crate::bg_color(),
+            "Failed...",
+        );
+    } else if !m_info.is_done() {
+        ctx.print_color(
+            x + 6,
+            y,
+            crate::text_highlight_color(),
+            crate::bg_color(),
+            "In prgrss",
+        );
+        ctx.print(x, y + 2, "Remaining");
+        for (i, ent) in m_info.remaining.iter().enumerate() {
+            if let Some(ent_view) = views.get(*ent) {
+                ctx.print(x + 2, y + 4 + 2 * i as i32, ent_view.name.clone());
+            }
+        }
+    } else if matches!(*next_state, RunState::Dead { success: true }) {
+        ctx.print_color(
+            x + 6,
+            y,
+            crate::text_success_color(),
+            crate::bg_color(),
+            "Complete!",
         );
     } else {
-        ctx.print_color(x, y, crate::text_failed_color(), crate::bg_color(), "None");
+        ctx.print_color(
+            x + 6,
+            y,
+            crate::text_failed_color(),
+            crate::bg_color(),
+            "None",
+        );
     }
 
-    let invulns = ecs.read_storage::<Invulnerable>();
-    if let Some(inv) = invulns.get(*player) {
-        ctx.print(x, y + 2, "Invulnerable!");
-    }
+    // Resources
+    y = 30;
+    ctx.print(x, y, format!("Money:{}z", gs.player_inventory.money));
+    ctx.print(
+        x,
+        y + 2,
+        format!("Weapon:{}", gs.player_inventory.weapon.name()),
+    );
+    ctx.print(
+        x,
+        y + 4,
+        format!("Armor:+{}", gs.player_inventory.armor_level),
+    );
 
-    super::tooltip::draw_tooltips(ecs, ctx);
+    // Weapon info
+    y = 38;
+    ctx.print(x, y, "Controls");
+    draw_movement_controls(ctx, x, y + 2, text_highlight_color(), bg_color(), false);
+
+    let dodge_icon_color = if crate::player::can_dodge(&gs) {
+        text_highlight_color()
+    } else {
+        text_inactive_color()
+    };
+    ctx.print_color(x, y + 4, dodge_icon_color, bg_color(), "[SPACE]");
+    ctx.print(x + 8, y + 4, "Dodge");
+
+    let player_stam = stams.get(*player).unwrap().current;
+    add_weapon_text(ctx, x, y + 6, &gs.player_inventory.weapon, player_stam);
+
+    super::tooltip::draw_tooltips(&gs.ecs, ctx);
 }
 
 fn draw_resource_bar(
@@ -98,10 +151,88 @@ fn draw_resource_bar(
 ) {
     let curr = std::cmp::max(0, curr);
     for i in 0..curr {
-        ctx.set(x + i + 2, y, main_color, bg_color(), rltk::to_cp437('o'));
+        ctx.set(x + i, y, main_color, bg_color(), rltk::to_cp437('o'));
     }
 
     for i in curr..max {
-        ctx.set(x + i + 2, y, alt_color, bg_color(), rltk::to_cp437('o'));
+        ctx.set(x + i, y, alt_color, bg_color(), rltk::to_cp437('o'));
+    }
+}
+
+fn draw_movement_controls(ctx: &mut Rltk, x: i32, y: i32, fg: RGB, bg: RGB, inactive: bool) {
+    ctx.set(x, y, fg, bg, 27);
+    ctx.set(x + 1, y, fg, bg, 25);
+    ctx.set(x + 2, y, fg, bg, 24);
+    ctx.set(x + 3, y, fg, bg, 26);
+
+    if inactive {
+        ctx.print_color(x + 8, y, fg, bg, "Move");
+    } else {
+        ctx.print(x + 8, y, "Move");
+    }
+}
+
+fn add_weapon_text(
+    ctx: &mut Rltk,
+    x: i32,
+    y: i32,
+    weapon: &Box<dyn crate::weapon::Weapon>,
+    player_stam: i32,
+) {
+    let icon_color = text_highlight_color();
+    let inactive_color = text_inactive_color();
+    let bg_color = bg_color();
+
+    let mut y = y;
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Light) {
+        let sheathe_icon_color = if name != "Draw Atk" {
+            icon_color
+        } else {
+            inactive_color
+        };
+
+        ctx.print_color(x, y, sheathe_icon_color, bg_color, "s");
+        ctx.print(x + 2, y, "Sheathe");
+
+        if let Some(stam_cost) = weapon.can_activate_cost(WeaponButton::Light) {
+            let attack_icon_color = if stam_cost <= player_stam {
+                icon_color
+            } else {
+                inactive_color
+            };
+
+            y += 2;
+            ctx.print_color(x, y, attack_icon_color, bg_color, "z");
+            ctx.print(x + 2, y, &name);
+        }
+    }
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Heavy) {
+        if let Some(stam_cost) = weapon.can_activate_cost(WeaponButton::Heavy) {
+            let attack_icon_color = if stam_cost <= player_stam {
+                icon_color
+            } else {
+                inactive_color
+            };
+
+            y += 2;
+            ctx.print_color(x, y, attack_icon_color, bg_color, "x");
+            ctx.print(x + 2, y, &name);
+        }
+    }
+
+    if let Some(name) = weapon.attack_name(WeaponButton::Special) {
+        if let Some(stam_cost) = weapon.can_activate_cost(WeaponButton::Special) {
+            let attack_icon_color = if stam_cost <= player_stam {
+                icon_color
+            } else {
+                inactive_color
+            };
+
+            y += 2;
+            ctx.print_color(x, y, attack_icon_color, bg_color, "c");
+            ctx.print(x + 2, y, &name);
+        }
     }
 }

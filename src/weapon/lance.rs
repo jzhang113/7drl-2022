@@ -175,6 +175,10 @@ impl Lance {
 }
 
 impl Weapon for Lance {
+    fn name(&self) -> String {
+        format!("Lance+{}", self.level)
+    }
+
     fn sheathe(&mut self) -> bool {
         if self.state == LanceState::Sheathed {
             return false;

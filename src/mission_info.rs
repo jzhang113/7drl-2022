@@ -1,7 +1,7 @@
 use specs::Entity;
 
 pub struct MissionInfo {
-    remaining: Vec<Entity>,
+    pub remaining: Vec<Entity>,
 }
 
 impl MissionInfo {

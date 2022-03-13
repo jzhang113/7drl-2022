@@ -93,7 +93,7 @@ pub fn draw_missions(
         ctx.print(
             book_x + 1,
             book_y + book_page_h - 7,
-            quest::quest_type_name(quest.quest_type),
+            quest.quest_type.name(),
         );
         ctx.print(book_x + 1, book_y + book_page_h - 5, "Hunt all targets");
         ctx.print(

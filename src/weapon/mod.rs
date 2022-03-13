@@ -7,6 +7,8 @@ pub enum WeaponButton {
 }
 
 pub trait Weapon {
+    fn name(&self) -> String;
+
     fn sheathe(&mut self) -> bool;
     fn reset(&mut self);
 

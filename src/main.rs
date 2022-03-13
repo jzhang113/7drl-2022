@@ -354,7 +354,7 @@ impl GameState for State {
         gui::map::draw_all(&self.ecs, ctx, *is_weapon_sheathed);
 
         // non-map elements
-        gui::sidebar::draw_sidebar(&self.ecs, ctx, &self.selected_quest);
+        gui::sidebar::draw_sidebar(&self, ctx);
 
         match next_status {
             RunState::AwaitingInput => {

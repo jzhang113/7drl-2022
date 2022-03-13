@@ -25,10 +25,20 @@ pub enum QuestType {
     Urgent,
 }
 
-pub fn quest_type_name(quest_type: QuestType) -> String {
-    match quest_type {
-        QuestType::Hunt => "Hunting Quest".to_string(),
-        QuestType::Gather => "Gathering Quest".to_string(),
-        QuestType::Urgent => "Urgent Quest".to_string(),
+impl QuestType {
+    pub fn name(&self) -> String {
+        match self {
+            QuestType::Hunt => "Hunting Quest".to_string(),
+            QuestType::Gather => "Gathering Quest".to_string(),
+            QuestType::Urgent => "Urgent Quest".to_string(),
+        }
+    }
+
+    pub fn short_name(&self) -> String {
+        match self {
+            QuestType::Hunt => "Hunt".to_string(),
+            QuestType::Gather => "Gather".to_string(),
+            QuestType::Urgent => "Urgent".to_string(),
+        }
     }
 }

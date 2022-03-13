@@ -385,7 +385,7 @@ fn handle_dodge(ecs: &mut World) -> Option<MoveIntent> {
     });
 }
 
-pub fn can_dodge(gs: &mut State) -> bool {
+pub fn can_dodge(gs: &State) -> bool {
     let stams = gs.ecs.read_storage::<Stamina>();
     let player = gs.ecs.fetch::<Entity>();
     let stamina = stams.get(*player).unwrap();
