@@ -54,49 +54,63 @@ pub fn draw_sidebar(gs: &State, ctx: &mut Rltk) {
     // Quest info
     y += 4;
     ctx.print(x, y, "Quest:");
-    if let Some(quest) = &gs.selected_quest {
-        ctx.print_color(
-            x + 6,
-            y,
-            crate::text_highlight_color(),
-            crate::bg_color(),
-            "Accepted",
-        );
 
-        ctx.print(x, y + 2, "Targets");
-        for (i, name) in quest.spawn_info.major_monsters.iter().enumerate() {
-            ctx.print(x + 2, y + 4 + 2 * i as i32, name);
-        }
-    } else if matches!(*next_state, RunState::Dead { success: false }) {
-        ctx.print_color(
-            x + 6,
-            y,
-            crate::text_failed_color(),
-            crate::bg_color(),
-            "Failed...",
-        );
-    } else if !m_info.is_done() {
-        ctx.print_color(
-            x + 6,
-            y,
-            crate::text_highlight_color(),
-            crate::bg_color(),
-            "In prgrss",
-        );
-        ctx.print(x, y + 2, "Remaining");
-        for (i, ent) in m_info.remaining.iter().enumerate() {
-            if let Some(ent_view) = views.get(*ent) {
-                ctx.print(x + 2, y + 4 + 2 * i as i32, ent_view.name.clone());
+    if let Some(quest) = &gs.selected_quest {
+        if quest.started {
+            match *next_state {
+                RunState::Dead { success } => {
+                    if success {
+                        ctx.print_color(
+                            x + 6,
+                            y,
+                            crate::text_success_color(),
+                            crate::bg_color(),
+                            "Complete!",
+                        );
+                    } else {
+                        ctx.print_color(
+                            x + 6,
+                            y,
+                            crate::text_failed_color(),
+                            crate::bg_color(),
+                            "Failed",
+                        );
+                    }
+
+                    ctx.print_color(x, y + 2, text_highlight_color(), bg_color(), "r");
+                    ctx.print(x + 1, y + 2, "eturn to base");
+                }
+                _ => {
+                    if !m_info.is_done() {
+                        ctx.print_color(
+                            x + 6,
+                            y,
+                            crate::text_highlight_color(),
+                            crate::bg_color(),
+                            "In prgrss",
+                        );
+                        ctx.print(x, y + 2, "Remaining");
+                        for (i, ent) in m_info.remaining.iter().enumerate() {
+                            if let Some(ent_view) = views.get(*ent) {
+                                ctx.print(x + 2, y + 4 + 2 * i as i32, ent_view.name.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            ctx.print_color(
+                x + 6,
+                y,
+                crate::text_highlight_color(),
+                crate::bg_color(),
+                "Accepted",
+            );
+            ctx.print(x, y + 2, "Targets");
+            for (i, name) in quest.spawn_info.major_monsters.iter().enumerate() {
+                ctx.print(x + 2, y + 4 + 2 * i as i32, name);
             }
         }
-    } else if matches!(*next_state, RunState::Dead { success: true }) {
-        ctx.print_color(
-            x + 6,
-            y,
-            crate::text_success_color(),
-            crate::bg_color(),
-            "Complete!",
-        );
     } else {
         ctx.print_color(
             x + 6,

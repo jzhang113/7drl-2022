@@ -21,7 +21,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
     );
 
     let map = ecs.fetch::<Map>();
-    let floor_str = format!("FLOOR {}", map.depth);
+    let floor_str = map.name.clone();
     ctx.print(
         camera::VIEW_W + MAP_SCREEN_X - floor_str.len() as i32,
         MAP_SCREEN_Y - 1,

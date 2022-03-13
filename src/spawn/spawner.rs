@@ -179,8 +179,8 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
                 (rltk::Point::new(-1, 1), rltk::to_cp437('└')),
                 (rltk::Point::new(0, 1), rltk::to_cp437('─')),
             ]),
-            health: 1,
-            max_health: 1,
+            health: 4,
+            max_health: 4,
         },
         MonsterPart {
             symbol_map: HashMap::from([
@@ -188,8 +188,8 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
                 (rltk::Point::new(1, -1), rltk::to_cp437('┐')),
                 (rltk::Point::new(1, 0), rltk::to_cp437('│')),
             ]),
-            health: 1,
-            max_health: 1,
+            health: 4,
+            max_health: 4,
         },
     ];
 
@@ -205,12 +205,7 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
         })
         .with(Viewable {
             name: "Pusher".to_string(),
-            description: vec![
-                "A lowly grunt,".to_string(),
-                "unskilled, but".to_string(),
-                "can still pack".to_string(),
-                "a wallop".to_string(),
-            ],
+            description: vec![],
             seen: false,
         })
         .with(Health {
@@ -235,16 +230,16 @@ pub fn build_crab(ecs: &mut World, point: Point) -> Entity {
     let part_list = vec![
         MonsterPart {
             symbol_map: HashMap::from([
-                (rltk::Point::new(0, 1), rltk::to_cp437('─')),
-                (rltk::Point::new(1, 2), rltk::to_cp437('\\')),
+                (rltk::Point::new(1, 0), rltk::to_cp437('─')),
+                (rltk::Point::new(2, 1), rltk::to_cp437('\\')),
             ]),
             health: 1,
             max_health: 1,
         },
         MonsterPart {
             symbol_map: HashMap::from([
-                (rltk::Point::new(0, -1), rltk::to_cp437('─')),
-                (rltk::Point::new(1, -2), rltk::to_cp437('/')),
+                (rltk::Point::new(-1, 0), rltk::to_cp437('─')),
+                (rltk::Point::new(-2, 1), rltk::to_cp437('/')),
             ]),
             health: 1,
             max_health: 1,
@@ -262,13 +257,8 @@ pub fn build_crab(ecs: &mut World, point: Point) -> Entity {
             bg: RGB::named(rltk::BLACK),
         })
         .with(Viewable {
-            name: "Pusher".to_string(),
-            description: vec![
-                "A lowly grunt,".to_string(),
-                "unskilled, but".to_string(),
-                "can still pack".to_string(),
-                "a wallop".to_string(),
-            ],
+            name: "Crab".to_string(),
+            description: vec![],
             seen: false,
         })
         .with(Health {
@@ -290,6 +280,29 @@ pub fn build_crab(ecs: &mut World, point: Point) -> Entity {
 }
 
 pub fn build_archer(ecs: &mut World, point: Point) -> Entity {
+    let part_list = vec![
+        MonsterPart {
+            symbol_map: HashMap::from([(rltk::Point::new(-1, 0), rltk::to_cp437('<'))]),
+            health: 2,
+            max_health: 2,
+        },
+        MonsterPart {
+            symbol_map: HashMap::from([(rltk::Point::new(0, 1), rltk::to_cp437('v'))]),
+            health: 2,
+            max_health: 2,
+        },
+        MonsterPart {
+            symbol_map: HashMap::from([(rltk::Point::new(1, 0), rltk::to_cp437('>'))]),
+            health: 2,
+            max_health: 2,
+        },
+        MonsterPart {
+            symbol_map: HashMap::from([(rltk::Point::new(0, -1), rltk::to_cp437('^'))]),
+            health: 2,
+            max_health: 2,
+        },
+    ];
+
     build_enemy_base(ecs)
         .with(Position {
             x: point.x,
@@ -305,7 +318,11 @@ pub fn build_archer(ecs: &mut World, point: Point) -> Entity {
             description: vec!["A grunt with a bow".to_string()],
             seen: false,
         })
-        .with(Health { current: 2, max: 2 })
+        .with(Health { current: 6, max: 6 })
+        .with(MultiTile {
+            bounds: all_bounds(&part_list),
+            part_list: part_list,
+        })
         .with(Moveset {
             moves: vec![(AttackType::Punch, 0.25), (AttackType::Ranged, 0.75)],
             bump_attack: AttackType::Punch,

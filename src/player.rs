@@ -16,6 +16,7 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
     let npcs = ecs.read_storage::<Npc>();
     let map = ecs.fetch::<Map>();
     let player = ecs.fetch::<Entity>();
+    let mut log = ecs.fetch_mut::<gamelog::GameLog>();
 
     for (_player, pos) in (&players, &mut positions).join() {
         let new_x = min(map.width, max(0, pos.x + dx));
@@ -49,9 +50,18 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
                     return RunState::Running;
                 } else if let Some(npc) = npcs.get(*dest_ent) {
                     match npc.npc_type {
-                        NpcType::Blacksmith => return RunState::Blacksmith,
-                        NpcType::Handler => return RunState::MissionSelect { index: 0 },
-                        NpcType::Shopkeeper => return RunState::Shop,
+                        NpcType::Blacksmith => {
+                            log.add("Upgrade your equipment here");
+                            return RunState::Blacksmith;
+                        }
+                        NpcType::Handler => {
+                            log.add("Accept missions here");
+                            return RunState::MissionSelect { index: 0 };
+                        }
+                        NpcType::Shopkeeper => {
+                            log.add("Buy useful items here");
+                            return RunState::Shop;
+                        }
                     }
                 } else {
                     // let attack = crate::attack_type::get_attack_intent(
@@ -424,6 +434,10 @@ pub fn end_turn_cleanup(ecs: &mut World) {
     // }
 
     can_act.clear();
+
+    // clear message line
+    let mut log = ecs.fetch_mut::<GameLog>();
+    log.dirty = false;
 }
 
 fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunState {
@@ -462,11 +476,11 @@ fn handle_keys(gs: &mut State, ctx: &mut Rltk, is_weapon_sheathed: bool) -> RunS
                 gs.player_inventory.weapon.reset();
                 return RunState::Running;
             }
-            VirtualKeyCode::D => {
-                // TODO: For testing, remove
-                return RunState::Dead { success: true };
-            }
-            VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
+            // VirtualKeyCode::D => {
+            //     // TODO: For testing, remove
+            //     return RunState::Dead { success: true };
+            // }
+            // VirtualKeyCode::V => RunState::ViewEnemy { index: 0 },
             VirtualKeyCode::Z => {
                 return weapon_attack(gs, WeaponButton::Light);
             }

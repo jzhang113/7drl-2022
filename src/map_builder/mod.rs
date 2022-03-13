@@ -18,12 +18,12 @@ pub trait MapBuilder {
 pub struct MapBuilderArgs {
     pub width: i32,
     pub height: i32,
-    pub depth: i32,
     pub builder_type: usize,
+    pub name: String,
     pub map_color: String,
 }
 
-pub fn random_builder(width: i32, height: i32, depth: i32) -> Box<dyn MapBuilder> {
+pub fn random_builder(width: i32, height: i32, name: String) -> Box<dyn MapBuilder> {
     let mut rng = rltk::RandomNumberGenerator::new();
     let builder_type = rng.roll_dice(1, 3);
     println!("Building map type {}", builder_type);
@@ -32,7 +32,7 @@ pub fn random_builder(width: i32, height: i32, depth: i32) -> Box<dyn MapBuilder
             builder_type: builder_type as usize,
             width,
             height,
-            depth,
+            name,
             map_color: "#FFFFFF".to_string(),
         },
         &mut rng,

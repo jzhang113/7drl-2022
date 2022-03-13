@@ -23,7 +23,7 @@ pub struct Map {
     pub rooms: Vec<Rect>,
     pub width: i32,
     pub height: i32,
-    pub depth: i32,
+    pub name: String,
     pub camera: crate::Camera,
     pub color_map: Vec<rltk::RGB>,
     pub item_map: HashMap<usize, Entity>,
@@ -80,7 +80,7 @@ impl Map {
     pub fn new(
         width: i32,
         height: i32,
-        depth: i32,
+        name: &String,
         map_color: &String,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> Self {
@@ -99,7 +99,7 @@ impl Map {
             rooms: vec![],
             width,
             height,
-            depth,
+            name: name.clone(),
             camera: crate::Camera {
                 origin: rltk::Point::zero(),
                 map_width: width,

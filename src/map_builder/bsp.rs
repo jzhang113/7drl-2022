@@ -7,7 +7,13 @@ pub fn build_rogue_map(
     depth: i32,
     rng: &mut rltk::RandomNumberGenerator,
 ) -> Map {
-    let mut map = Map::new(width, height, depth, &"#FFFFFF".to_string(), rng);
+    let mut map = Map::new(
+        width,
+        height,
+        &"BSP".to_string(),
+        &"#FFFFFF".to_string(),
+        rng,
+    );
 
     const MAX_ROOMS: i32 = 12;
     const MIN_ROOM_WIDTH: i32 = 20;

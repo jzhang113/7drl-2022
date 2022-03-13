@@ -19,7 +19,6 @@ pub struct DrunkardSettings {
 pub struct DrunkardsWalkBuilder {
     map: Map,
     starting_position: Position,
-    depth: i32,
     history: Vec<Map>,
     noise_areas: HashMap<i32, Vec<usize>>,
     settings: DrunkardSettings,
@@ -95,9 +94,8 @@ impl DrunkardsWalkBuilder {
         settings: DrunkardSettings,
     ) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
+            map: Map::new(args.width, args.height, &args.name, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings,
@@ -106,9 +104,8 @@ impl DrunkardsWalkBuilder {
 
     pub fn open_area(args: &super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
+            map: Map::new(args.width, args.height, &args.name, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {
@@ -122,9 +119,8 @@ impl DrunkardsWalkBuilder {
 
     pub fn open_halls(args: &super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
+            map: Map::new(args.width, args.height, &args.name, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {
@@ -141,9 +137,8 @@ impl DrunkardsWalkBuilder {
         rng: &mut rltk::RandomNumberGenerator,
     ) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
+            map: Map::new(args.width, args.height, &args.name, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
-            depth: args.depth,
             history: Vec::new(),
             noise_areas: HashMap::new(),
             settings: DrunkardSettings {
@@ -218,7 +213,7 @@ impl DrunkardsWalkBuilder {
                         }
                     }
                     2 => {
-                        if drunk_x < self.map.width - self.settings.digger_size - 1 {
+                        if drunk_x < self.map.width - self.settings.digger_size - 2 {
                             drunk_x += 1;
                         }
                     }
@@ -228,7 +223,7 @@ impl DrunkardsWalkBuilder {
                         }
                     }
                     _ => {
-                        if drunk_y < self.map.height - self.settings.digger_size - 1 {
+                        if drunk_y < self.map.height - self.settings.digger_size - 2 {
                             drunk_y += 1;
                         }
                     }

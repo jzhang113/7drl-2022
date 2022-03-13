@@ -15,6 +15,7 @@ impl QuestLog {
         let area_info = crate::data::get_random_area(rng);
         let spawn_info = crate::spawn::info::generate_spawn_info(rng, difficulty);
         let quest_difficulty = spawn_info.difficulty;
+        let name_copy = area_info.name.clone();
 
         let quest = Quest {
             quest_type: QuestType::Hunt,
@@ -24,13 +25,14 @@ impl QuestLog {
                 builder_type: area_info.map_type,
                 height: 40 + 10 * quest_difficulty,
                 width: 40 + 10 * quest_difficulty,
-                depth: 1,
+                name: name_copy,
                 map_color: area_info.color,
             },
             reward: 120,
             turn_limit: 300,
             completed: false,
             days_remaining: 3,
+            started: false,
         };
 
         self.entries.push(quest);

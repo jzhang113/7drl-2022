@@ -8,6 +8,7 @@ pub struct Quest {
     pub turn_limit: u32,
     pub completed: bool,
     pub days_remaining: u8,
+    pub started: bool,
 }
 
 impl Quest {

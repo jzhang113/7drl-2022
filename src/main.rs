@@ -52,6 +52,8 @@ pub use spawn::info::SpawnInfo;
 pub use sys_ai::{Behavior, NextIntent};
 pub use sys_particle::{ParticleBuilder, ParticleRequest};
 
+use gamelog::GameLog;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum TargettingValid {
     Unblocked,
@@ -149,7 +151,7 @@ impl State {
         let mut rng = rltk::RandomNumberGenerator::new();
 
         // Add a dummy map and player to the ecs
-        let map = Map::new(1, 1, 1, &"#FFFFFF".to_string(), &mut rng);
+        let map = Map::new(1, 1, &"Dummy".to_string(), &"#FFFFFF".to_string(), &mut rng);
         self.ecs.insert(map);
 
         let player = spawn::spawner::build_player(&mut self.ecs, rltk::Point::new(0, 0));
@@ -161,7 +163,8 @@ impl State {
         self.ecs.insert(rng);
 
         let log = gamelog::GameLog {
-            entries: vec!["Hello world!".to_string()],
+            entries: Vec::new(),
+            dirty: false,
         };
         self.ecs.insert(log);
 
@@ -233,7 +236,7 @@ impl State {
                 builder_type: 4,
                 width: 20,
                 height: 20,
-                depth: 0,
+                name: "Base".to_string(),
                 map_color: "#D4BF8E".to_string(),
             },
             &SpawnInfo {
@@ -359,10 +362,10 @@ impl GameState for State {
 
         // non-map elements
         gui::sidebar::draw_sidebar(&self, ctx);
+        gui::log::update_log_text(&self.ecs, ctx);
 
         match next_status {
             RunState::AwaitingInput => {
-                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 next_status = player::player_input(self, ctx, *is_weapon_sheathed);
 
                 if next_status == RunState::Running {
@@ -370,7 +373,6 @@ impl GameState for State {
                 }
             }
             RunState::Charging { dir, speed } => {
-                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 self.player_charging = (true, dir, speed, false);
                 next_status = RunState::Running
             }
@@ -379,7 +381,6 @@ impl GameState for State {
                 cursor_point,
                 validity_mode,
             } => {
-                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 let range_type = crate::attack_type::get_attack_range(attack_type);
                 let tiles_in_range = crate::range_type::resolve_range_at(&range_type, player_point);
 
@@ -424,7 +425,6 @@ impl GameState for State {
                 }
             }
             RunState::ViewEnemy { index } => {
-                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
                 next_status = player::view_input(self, ctx, index);
             }
             RunState::Running => {
@@ -441,10 +441,6 @@ impl GameState for State {
                 }
             }
             RunState::HitPause { remaining_time } => {
-                {
-                    gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
-                }
-
                 sys_particle::ParticleSpawnSystem.run_now(&self.ecs);
 
                 let new_time = remaining_time - ctx.frame_time_ms;
@@ -458,14 +454,16 @@ impl GameState for State {
             }
             RunState::GenerateLevel => match self.selected_quest.take() {
                 None => {
-                    println!("You need to select a quest first");
+                    let mut log = self.ecs.fetch_mut::<GameLog>();
+                    log.add("You need to select a quest first");
                     next_status = RunState::AwaitingInput;
                 }
-                Some(quest) => {
+                Some(mut quest) => {
                     self.new_level(&quest.map_builder_args, &quest.spawn_info);
                     sys_visibility::VisibilitySystem.run_now(&self.ecs);
 
                     // todo, merge with MissionInfo?
+                    quest.started = true;
                     self.selected_quest = Some(quest);
                     next_status = RunState::AwaitingInput;
                 }
@@ -478,8 +476,6 @@ impl GameState for State {
                 // next_status = RunState::AwaitingInput;
             }
             RunState::Dead { success } => {
-                gui::controls::update_controls_text(&self.ecs, ctx, &next_status);
-
                 match ctx.key {
                     None => {}
                     Some(key) => {
@@ -537,13 +533,6 @@ impl GameState for State {
                         }
                     }
                 }
-            }
-        }
-
-        match next_status {
-            RunState::Dead { .. } => {}
-            _ => {
-                gui::controls::add_weapon_text(ctx, &self.player_inventory.weapon);
             }
         }
 
