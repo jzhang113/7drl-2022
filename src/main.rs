@@ -80,6 +80,7 @@ pub enum RunState {
         index: usize,
     },
     Shop,
+    Blacksmith,
     Dead {
         success: bool,
     },
@@ -350,11 +351,7 @@ impl GameState for State {
         };
 
         // draw map + gui
-        match next_status {
-            // RunState::MissionSelect { .. } => {}
-            RunState::Shop => {}
-            _ => gui::map::draw_all(&self.ecs, ctx, *is_weapon_sheathed),
-        };
+        gui::map::draw_all(&self.ecs, ctx, *is_weapon_sheathed);
 
         // non-map elements
         gui::sidebar::draw_sidebar(&self.ecs, ctx, &self.selected_quest);
@@ -503,22 +500,30 @@ impl GameState for State {
             RunState::MissionSelect { index } => {
                 gui::overworld::draw_missions(ctx, &self.quests, &self.selected_quest, index);
 
-                if let Some(key) = ctx.key {
-                    if key == rltk::VirtualKeyCode::V {
-                        self.advance_day();
-                    }
-                }
-
                 next_status = player::mission_select_input(self, ctx, index);
             }
-            RunState::Shop => match ctx.key {
-                None => {}
-                Some(key) => {
-                    if key == rltk::VirtualKeyCode::Escape {
-                        next_status = RunState::Running;
+            RunState::Shop => {
+                gui::overworld::draw_shop(ctx);
+                match ctx.key {
+                    None => {}
+                    Some(key) => {
+                        if key == rltk::VirtualKeyCode::Escape {
+                            next_status = RunState::Running;
+                        }
                     }
                 }
-            },
+            }
+            RunState::Blacksmith => {
+                gui::overworld::draw_upgrades(ctx);
+                match ctx.key {
+                    None => {}
+                    Some(key) => {
+                        if key == rltk::VirtualKeyCode::Escape {
+                            next_status = RunState::Running;
+                        }
+                    }
+                }
+            }
         }
 
         match next_status {

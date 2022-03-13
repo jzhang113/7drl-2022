@@ -49,22 +49,25 @@ fn try_move_player(ecs: &mut World, dx: i32, dy: i32) -> RunState {
                     return RunState::Running;
                 } else if let Some(npc) = npcs.get(*dest_ent) {
                     match npc.npc_type {
-                        NpcType::Blacksmith => return RunState::Shop,
+                        NpcType::Blacksmith => return RunState::Blacksmith,
                         NpcType::Handler => return RunState::MissionSelect { index: 0 },
                         NpcType::Shopkeeper => return RunState::Shop,
                     }
                 } else {
-                    let attack = crate::attack_type::get_attack_intent(
-                        AttackType::Punch,
-                        Point::new(new_x, new_y),
-                        None,
-                    );
+                    // let attack = crate::attack_type::get_attack_intent(
+                    //     AttackType::Punch,
+                    //     Point::new(new_x, new_y),
+                    //     None,
+                    // );
 
-                    attacks
-                        .insert(*player, attack)
-                        .expect("Failed to insert new attack from player");
+                    // attacks
+                    //     .insert(*player, attack)
+                    //     .expect("Failed to insert new attack from player");
 
-                    return RunState::Running;
+                    // return RunState::Running;
+
+                    // Keep bump attacks?
+                    return RunState::AwaitingInput;
                 }
             }
 

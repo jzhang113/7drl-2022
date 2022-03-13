@@ -127,3 +127,35 @@ pub fn draw_missions(
         }
     }
 }
+
+pub fn draw_upgrades(ctx: &mut Rltk) {
+    let book_x = 8;
+    let book_y = 6;
+    let book_page_w = 40;
+    let book_page_h = 40;
+
+    ctx.draw_box(
+        book_x,
+        book_y,
+        book_page_w,
+        book_page_h,
+        RGB::named(rltk::GREY),
+        RGB::named(rltk::BLACK),
+    );
+}
+
+pub fn draw_shop(ctx: &mut Rltk) {
+    let book_x = 8;
+    let book_y = 6;
+    let book_page_w = 40;
+    let book_page_h = 40;
+
+    ctx.draw_box(
+        book_x,
+        book_y,
+        book_page_w,
+        book_page_h,
+        RGB::named(rltk::GREY),
+        RGB::named(rltk::BLACK),
+    );
+}
