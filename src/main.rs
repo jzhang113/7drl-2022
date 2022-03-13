@@ -100,6 +100,7 @@ pub struct State {
     selected_quest: Option<quest::quest::Quest>,
     player_inventory: inventory::Inventory,
     player_charging: (bool, crate::Direction, u8, bool),
+    max_cleared_level: i32,
 }
 
 impl State {
@@ -155,7 +156,7 @@ impl State {
         self.ecs.insert(player);
 
         for _ in 0..3 {
-            self.quests.add_quest(&mut rng);
+            self.quests.add_quest(&mut rng, 1);
         }
         self.ecs.insert(rng);
 
@@ -239,6 +240,7 @@ impl State {
                 major_monsters: vec![],
                 minor_monsters: vec![],
                 resources: vec![],
+                difficulty: 0,
             },
         )
     }
@@ -300,7 +302,9 @@ impl State {
         let mut rng = self.ecs.fetch_mut::<rltk::RandomNumberGenerator>();
 
         self.quests.advance_day();
-        self.quests.add_quest(&mut rng);
+        for _ in 0..3 {
+            self.quests.add_quest(&mut rng, self.max_cleared_level + 1);
+        }
     }
 
     fn apply_rewards(&mut self) {
@@ -485,7 +489,13 @@ impl GameState for State {
 
                             if success {
                                 self.apply_rewards();
-                                self.selected_quest = None;
+                                self.max_cleared_level = std::cmp::max(
+                                    self.selected_quest
+                                        .as_ref()
+                                        .map(|v| v.spawn_info.difficulty)
+                                        .unwrap_or(0),
+                                    self.max_cleared_level,
+                                );
                             }
 
                             // clear out temp mission info
@@ -493,6 +503,7 @@ impl GameState for State {
                                 let mut m_info = self.ecs.fetch_mut::<MissionInfo>();
                                 m_info.reset();
                             }
+                            self.selected_quest = None;
                             self.advance_day();
 
                             next_status = RunState::Running;
@@ -579,6 +590,7 @@ fn main() -> rltk::BError {
         selected_quest: None,
         player_inventory: inventory::Inventory::new(),
         player_charging: (false, crate::Direction::N, 0, false),
+        max_cleared_level: 0,
     };
 
     gs.new_game();

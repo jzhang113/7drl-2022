@@ -11,16 +11,19 @@ impl QuestLog {
         }
     }
 
-    pub fn add_quest(&mut self, rng: &mut rltk::RandomNumberGenerator) {
+    pub fn add_quest(&mut self, rng: &mut rltk::RandomNumberGenerator, difficulty: i32) {
         let area_info = crate::data::get_random_area(rng);
+        let spawn_info = crate::spawn::info::generate_spawn_info(rng, difficulty);
+        let quest_difficulty = spawn_info.difficulty;
+
         let quest = Quest {
             quest_type: QuestType::Hunt,
-            spawn_info: crate::spawn::info::generate_spawn_info(rng),
+            spawn_info,
             area_name: area_info.name,
             map_builder_args: crate::map_builder::MapBuilderArgs {
                 builder_type: area_info.map_type,
-                height: 40,
-                width: 40,
+                height: 40 + 10 * quest_difficulty,
+                width: 40 + 10 * quest_difficulty,
                 depth: 1,
                 map_color: area_info.color,
             },

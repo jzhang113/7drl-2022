@@ -4,21 +4,31 @@ use std::collections::HashMap;
 
 const MAX_MONSTERS: i32 = 4;
 
-fn room_table(_map_depth: i32) -> Vec<(String, f32)> {
-    let mut spawn_ary = Vec::new();
-    spawn_ary.push(("mook".to_string(), 0.7));
-    spawn_ary.push(("archer".to_string(), 0.3));
-    spawn_ary
+type Spawner = Box<for<'r> fn(&'r mut World, Point) -> Entity>;
+
+lazy_static! {
+    pub static ref MONSTERS: HashMap<String, (i32, Spawner)> = load_monster_table();
+}
+
+fn load_monster_table() -> HashMap<String, (i32, Spawner)> {
+    let mut table = HashMap::new();
+
+    table.insert(
+        "Pusher".to_string(),
+        (
+            1,
+            Box::new(build_mook as for<'r> fn(&'r mut specs::World, rltk::Point) -> specs::Entity),
+        ),
+    );
+    table.insert("Archer".to_string(), (2, Box::new(build_archer)));
+    table.insert("Crab".to_string(), (1, Box::new(build_crab)));
+
+    table
 }
 
 pub fn build_from_name(ecs: &mut World, name: &String, index: usize) -> Option<Entity> {
     let point = { ecs.fetch::<Map>().index_to_point2d(index) };
-
-    match name.as_ref() {
-        "mook" => Some(build_mook(ecs, point)),
-        "archer" => Some(build_archer(ecs, point)),
-        _ => None,
-    }
+    MONSTERS.get(name).map(|(_, builder)| builder(ecs, point))
 }
 
 /// Fills a region with stuff!
@@ -194,7 +204,65 @@ pub fn build_mook(ecs: &mut World, point: Point) -> Entity {
             bg: RGB::named(rltk::BLACK),
         })
         .with(Viewable {
-            name: "Mook".to_string(),
+            name: "Pusher".to_string(),
+            description: vec![
+                "A lowly grunt,".to_string(),
+                "unskilled, but".to_string(),
+                "can still pack".to_string(),
+                "a wallop".to_string(),
+            ],
+            seen: false,
+        })
+        .with(Health {
+            current: 10,
+            max: 10,
+        })
+        .with(Moveset {
+            moves: vec![(AttackType::Sweep, 0.25), (AttackType::Punch, 0.75)],
+            bump_attack: AttackType::Punch,
+        })
+        .with(MultiTile {
+            bounds: all_bounds(&part_list),
+            part_list: part_list,
+        })
+        .with(Facing {
+            direction: crate::Direction::N,
+        })
+        .build()
+}
+
+pub fn build_crab(ecs: &mut World, point: Point) -> Entity {
+    let part_list = vec![
+        MonsterPart {
+            symbol_map: HashMap::from([
+                (rltk::Point::new(0, 1), rltk::to_cp437('─')),
+                (rltk::Point::new(1, 2), rltk::to_cp437('\\')),
+            ]),
+            health: 1,
+            max_health: 1,
+        },
+        MonsterPart {
+            symbol_map: HashMap::from([
+                (rltk::Point::new(0, -1), rltk::to_cp437('─')),
+                (rltk::Point::new(1, -2), rltk::to_cp437('/')),
+            ]),
+            health: 1,
+            max_health: 1,
+        },
+    ];
+
+    build_enemy_base(ecs)
+        .with(Position {
+            x: point.x,
+            y: point.y,
+        })
+        .with(Renderable {
+            symbol: rltk::to_cp437('x'),
+            fg: RGB::named(rltk::LIGHT_BLUE),
+            bg: RGB::named(rltk::BLACK),
+        })
+        .with(Viewable {
+            name: "Pusher".to_string(),
             description: vec![
                 "A lowly grunt,".to_string(),
                 "unskilled, but".to_string(),
@@ -276,7 +344,7 @@ pub fn build_empty_barrel(ecs: &mut World, point: Point, _quality: i32) -> Entit
     barrel_builder(ecs, point).build()
 }
 
-pub fn _build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Entity {
+pub fn _build_health_pickup(ecs: &mut World, point: Point) -> Entity {
     ecs.create_entity()
         .with(crate::Position {
             x: point.x,
@@ -287,9 +355,7 @@ pub fn _build_health_pickup(ecs: &mut World, point: Point, quality: i32) -> Enti
             fg: crate::health_color(),
             bg: crate::bg_color(),
         })
-        .with(crate::Heal {
-            amount: quality as u32,
-        })
+        .with(crate::Heal { amount: 2 })
         .with(crate::Viewable {
             name: "health".to_string(),
             description: vec!["Packaged health, don't ask".to_string()],
