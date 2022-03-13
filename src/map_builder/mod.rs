@@ -28,7 +28,7 @@ pub fn random_builder(width: i32, height: i32, depth: i32) -> Box<dyn MapBuilder
     let builder_type = rng.roll_dice(1, 3);
     println!("Building map type {}", builder_type);
     get_builder(
-        MapBuilderArgs {
+        &MapBuilderArgs {
             builder_type: builder_type as usize,
             width,
             height,
@@ -39,12 +39,15 @@ pub fn random_builder(width: i32, height: i32, depth: i32) -> Box<dyn MapBuilder
     )
 }
 
-pub fn with_builder(args: MapBuilderArgs) -> Box<dyn MapBuilder> {
+pub fn with_builder(args: &MapBuilderArgs) -> Box<dyn MapBuilder> {
     let mut rng = rltk::RandomNumberGenerator::new();
     get_builder(args, &mut rng)
 }
 
-fn get_builder(args: MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Box<dyn MapBuilder> {
+fn get_builder(
+    args: &MapBuilderArgs,
+    rng: &mut rltk::RandomNumberGenerator,
+) -> Box<dyn MapBuilder> {
     match args.builder_type {
         //1 => Box::new(BspDungeonBuilder::new(new_depth)),
         // 2 => Box::new(BspInteriorBuilder::new(new_depth)),

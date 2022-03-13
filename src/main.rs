@@ -148,7 +148,7 @@ impl State {
         let mut rng = rltk::RandomNumberGenerator::new();
 
         // Add a dummy map and player to the ecs
-        let map = Map::new(1, 1, 1, "#FFFFFF".to_string(), &mut rng);
+        let map = Map::new(1, 1, 1, &"#FFFFFF".to_string(), &mut rng);
         self.ecs.insert(map);
 
         let player = spawn::spawner::build_player(&mut self.ecs, rltk::Point::new(0, 0));
@@ -228,7 +228,7 @@ impl State {
 
     fn load_overworld(&mut self) {
         self.new_level(
-            MapBuilderArgs {
+            &MapBuilderArgs {
                 builder_type: 4,
                 width: 20,
                 height: 20,
@@ -243,7 +243,7 @@ impl State {
         )
     }
 
-    fn new_level(&mut self, map_builder_args: MapBuilderArgs, spawn_info: &SpawnInfo) {
+    fn new_level(&mut self, map_builder_args: &MapBuilderArgs, spawn_info: &SpawnInfo) {
         // Delete entities that aren't the player or his/her equipment
         let to_delete = self.entities_need_cleanup();
         for target in to_delete {
@@ -458,8 +458,11 @@ impl GameState for State {
                     next_status = RunState::AwaitingInput;
                 }
                 Some(quest) => {
-                    self.new_level(quest.map_builder_args, &quest.spawn_info);
+                    self.new_level(&quest.map_builder_args, &quest.spawn_info);
                     sys_visibility::VisibilitySystem.run_now(&self.ecs);
+
+                    // todo, merge with MissionInfo?
+                    self.selected_quest = Some(quest);
                     next_status = RunState::AwaitingInput;
                 }
             },

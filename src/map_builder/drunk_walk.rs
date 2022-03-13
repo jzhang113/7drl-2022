@@ -90,12 +90,12 @@ impl MapBuilder for DrunkardsWalkBuilder {
 impl DrunkardsWalkBuilder {
     #[allow(dead_code)]
     pub fn new(
-        args: super::MapBuilderArgs,
+        args: &super::MapBuilderArgs,
         rng: &mut rltk::RandomNumberGenerator,
         settings: DrunkardSettings,
     ) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
+            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
             depth: args.depth,
             history: Vec::new(),
@@ -104,9 +104,9 @@ impl DrunkardsWalkBuilder {
         }
     }
 
-    pub fn open_area(args: super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
+    pub fn open_area(args: &super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
+            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
             depth: args.depth,
             history: Vec::new(),
@@ -120,9 +120,9 @@ impl DrunkardsWalkBuilder {
         }
     }
 
-    pub fn open_halls(args: super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
+    pub fn open_halls(args: &super::MapBuilderArgs, rng: &mut rltk::RandomNumberGenerator) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
+            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
             depth: args.depth,
             history: Vec::new(),
@@ -137,11 +137,11 @@ impl DrunkardsWalkBuilder {
     }
 
     pub fn winding_passages(
-        args: super::MapBuilderArgs,
+        args: &super::MapBuilderArgs,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> Self {
         Self {
-            map: Map::new(args.width, args.height, args.depth, args.map_color, rng),
+            map: Map::new(args.width, args.height, args.depth, &args.map_color, rng),
             starting_position: Position { x: 0, y: 0 },
             depth: args.depth,
             history: Vec::new(),

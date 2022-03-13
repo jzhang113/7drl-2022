@@ -81,7 +81,7 @@ impl Map {
         width: i32,
         height: i32,
         depth: i32,
-        map_color: String,
+        map_color: &String,
         rng: &mut rltk::RandomNumberGenerator,
     ) -> Self {
         let dim = (width * height).try_into().unwrap();
